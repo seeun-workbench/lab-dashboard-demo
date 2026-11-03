@@ -61,7 +61,8 @@ h2{margin:0;font-size:15px;font-weight:600}
 .tile-note{font-size:12px;color:var(--muted);word-break:keep-all;overflow-wrap:anywhere}
 .tile-foot{margin-top:auto;min-height:34px;display:flex;flex-direction:column;justify-content:flex-end}
 .segs{display:flex;gap:3px}
-.segs i{flex:1 1 0;height:8px;border-radius:2px}
+/* Every segment has a 1px border (transparent unless a dashed one sets it), so dashed and filled ones get the same size. */
+.segs i{flex:1 1 0;min-width:4px;height:8px;box-sizing:border-box;border:1px solid transparent;border-radius:2px}
 .name{font-family:var(--mono);font-size:14px;font-weight:600}
 
 @media (max-width:640px){

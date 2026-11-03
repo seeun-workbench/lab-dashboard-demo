@@ -388,20 +388,10 @@
   // ---------- render: summary ----------
 
   function segs(list) {
+    // s.n = share of the width (two-part job bar); without it every segment is equal.
     return '<div class="segs" aria-hidden="true">' + list.map(function (s) {
-      return '<i style="background:' + s.c + ';' + (s.b ? 'border:' + s.b : '') + '"></i>';
+      return '<i style="background:' + s.c + ';' + (s.b ? 'border:' + s.b + ';' : '') + (s.n ? 'flex-grow:' + s.n : '') + '"></i>';
     }).join('') + '</div>';
-  }
-  function scaled(items, max) {
-    // Many jobs: draw a fixed number of segments in proportion instead of one each.
-    if (items.length <= max) return items;
-    var out = [], counts = {};
-    items.forEach(function (s) { counts[s.c] = (counts[s.c] || 0) + 1; });
-    Object.keys(counts).forEach(function (c) {
-      var n = Math.max(1, Math.round(counts[c] / items.length * max));
-      for (var i = 0; i < n; i++) out.push({ c: c });
-    });
-    return out.slice(0, max);
   }
   function tile(label, value, unit, note, noteWarn, valueWarn, foot) {
     return '<div class="tile"><span class="tile-label">' + label + '</span>' +
@@ -435,8 +425,10 @@
 
     var run = jobs.filter(jobRunning).length;
     var wait = jobs.filter(jobPending).length;
-    var jSegs = scaled(jobs.filter(function (j) { return jobRunning(j) || jobPending(j); })
-      .map(function (j) { return { c: jobPending(j) ? AMBER : SKY }; }), 40);
+    // Job counts change and run high, so one bar in two parts (running, then pending) instead of a segment per job.
+    var jSegs = [];
+    if (run) jSegs.push({ c: SKY, n: run });
+    if (wait) jSegs.push({ c: AMBER, n: wait });
 
     var up = nodes.filter(function (n) { return n.ns.kind === 'up'; }).length;
     var maints = nodes.filter(function (n) { return n.ns.maint; }).map(function (n) { return n.host; });

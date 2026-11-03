@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>데모 · 디스크 상태</title>
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Disks">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
+<style>
+.list{display:flex;flex-direction:column;gap:4px;font-family:var(--mono);font-size:12px}
+.list div{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:8px}
+.list span:first-child{color:var(--text2);overflow-wrap:anywhere}
+.list span:last-child{white-space:nowrap}
+.tbar{display:flex;flex-direction:column;gap:5px}
+.tbar .track{height:8px;border-radius:2px;background:var(--line);overflow:hidden}
+.tbar .track div{height:100%}
+.tbar .ends{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim)}
+
+/* servers with nothing to check: one panel under the others, a row per server */
+.ok-list{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.ok-row{width:100%;min-height:48px;padding:8px var(--pad);display:flex;align-items:center;gap:10px;background:none;border:0;border-top:1px solid var(--line);font-family:'IBM Plex Sans KR',sans-serif;font-size:12px;color:var(--muted);cursor:pointer;text-align:left}
+.ok-row:hover{background:rgba(127,127,127,.06)}
+.ok-row .dot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--blue)}
+.ok-row .name{flex:none;min-width:72px;font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text)}
+.ok-row .info{flex:1;min-width:0}
+.ok-row::after{content:'';order:-1;flex:none;width:7px;height:7px;margin-right:3px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
+.ok-row[aria-expanded="true"]::after{transform:rotate(45deg)}
+.ok-list .card{background:none;border:0;border-top:1px solid var(--line);border-radius:0}
+.ok-list .card-head{display:none}
+
+.cards{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px var(--pad);display:flex;flex-direction:column;gap:14px;min-width:0}
+.card-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px}
+.card-head .l{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.sub{font-size:12px;color:var(--muted)}
+.err{font-size:12px;color:var(--amber)}
+.vds{display:grid;grid-template-columns:56px minmax(0,1fr);align-items:start;gap:8px}
+.vds-l{font-size:11px;color:var(--muted);padding-top:6px}
+.vds>.sub{padding-top:5px}
+.vd-list{display:flex;flex-wrap:wrap;gap:6px}
+.vd{display:inline-flex;align-items:baseline;gap:8px;font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid var(--line2);color:var(--text2);white-space:nowrap}
+.vd b{font-weight:600;color:var(--text)}
+.vd .vd-size{color:var(--muted)}
+.vd .vd-st{font-family:'IBM Plex Sans KR',sans-serif}
+.vd.caution b,.vd.danger b{color:inherit}
+.vd.caution{border-color:var(--amber-line);color:var(--amber)}
+.vd.danger{border-color:var(--red-line);color:var(--red)}
+.encl{display:flex;flex-direction:column;gap:6px}
+.encl-head{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;font-size:12px;color:var(--muted)}
+.encl-head b{font-family:var(--mono);font-weight:600;color:var(--text2)}
+.encl-temp{font-family:var(--mono)}
+.sub.maint{color:var(--text2)}
+.bays{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:8px;display:grid;grid-auto-rows:1fr;gap:5px}
+.bay{min-height:58px;min-width:0;border-radius:6px;padding:5px 7px;border:1px solid var(--bay-line);background:var(--bay);color:var(--text);font-family:var(--mono);cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;text-align:left}
+.bay .top{display:flex;align-items:center;gap:5px;font-size:10px;line-height:12px;color:var(--muted);white-space:nowrap;overflow:hidden}
+.bay .led{width:6px;height:6px;flex:0 0 auto;border-radius:50%;background:var(--blue);box-shadow:0 0 6px var(--blue)}
+.bay .t{font-size:11px;line-height:1.25;color:var(--text2);word-break:keep-all;overflow-wrap:anywhere}
+/* every bay: temperature on the same line; a flagged/spare/to-remove bay adds one note line under it.
+   min-height already holds that third line, so every enclosure has the same bay height (58px, phones 56px) */
+.bays .bay{justify-content:flex-start;gap:6px}
+.bay .body{display:flex;flex-direction:column;gap:1px}
+.bay .note{font-size:10px;line-height:1.25;color:var(--muted);word-break:keep-all;overflow-wrap:anywhere}
+.bays .bay .note{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bay.caution .note{color:var(--amber)}
+.bay.danger .note{color:var(--red)}
+.bay.remove .note{color:var(--text)}
+.bay.caution{border-color:var(--amber);background:rgba(255,181,71,0.07)}
+.bay.caution .led{background:var(--amber);box-shadow:0 0 6px var(--amber)}
+.bay.danger{border-color:var(--red);background:rgba(255,107,107,0.09)}
+.bay.danger .led{background:var(--red);box-shadow:0 0 6px var(--red)}
+.bay.spare{border-color:var(--spare-line);background:transparent}
+.bay.spare .led{background:transparent;box-shadow:none;border:1px solid var(--sky)}
+.bay.spare .t{color:var(--muted)}
+/* To-remove bays: solid grey fill, so they never read as an empty (hollow, dashed) slot */
+.bay.remove,.remove-swatch{border:1px solid var(--remove-line);background:var(--line2)}
+.bay.remove .led{background:transparent;box-shadow:none;border:1px solid var(--text2)}
+.bay.remove .top{color:var(--text2)}
+.bay.remove .t{color:var(--text)}
+.pill.remove{background:var(--line2);color:var(--text)}
+.bay[aria-pressed="true"]{box-shadow:0 0 0 2px var(--text)}
+.bay.empty{border:1px dashed var(--line2);background:transparent;cursor:default}
+.bay.empty .top,.bay.empty .t{color:var(--dim)}
+.internal{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.internal>span:first-child{font-size:11px;color:var(--muted);width:56px}
+.internal .bay{min-height:36px;flex-direction:row;align-items:center;gap:10px;padding:0 12px;border-radius:8px;font-size:12px}
+.detail{border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:12px}
+.detail-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
+.detail-head .l{display:flex;align-items:baseline;gap:10px;font-family:var(--mono)}
+.detail-head .l b{font-size:14px;font-weight:600}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;background:rgba(125,211,252,0.10);color:var(--sky)}
+.pill i{width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.caution{background:rgba(255,181,71,0.12);color:var(--amber)}
+.pill.danger{background:rgba(255,107,107,0.14);color:var(--red)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px 16px}
+.facts div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.facts span:first-child{font-size:11px;color:var(--muted)}
+.facts span:last-child{font-family:var(--mono);font-size:13px;overflow-wrap:anywhere}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;padding:0 8px;font-size:11px;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:8px}
+.legend i{width:7px;height:7px;border-radius:50%}
+.ok-list>.ok-row:first-child,.gloss details:first-child>.ok-row{border-top:0}
+.gloss summary{list-style:none}
+.gloss summary::-webkit-details-marker{display:none}
+.gloss .ok-row .name{min-width:92px;font-family:'IBM Plex Sans KR',sans-serif}
+.gloss details[open]>.ok-row::after{transform:rotate(45deg)}
+.gloss dl{margin:0;padding:4px var(--pad) 8px;border-top:1px solid var(--line);display:grid;grid-template-columns:170px minmax(0,1fr) 170px 170px;font-size:13px}
+.gloss dt,.gloss dd{margin:0;padding:10px 20px 10px 0;border-top:1px solid var(--line)}
+.gloss dt{font-weight:600;color:var(--text)}
+.gloss dt small{display:block;margin-top:2px;font-family:var(--mono);font-size:10px;font-weight:400;color:var(--dim)}
+.gloss dd{color:var(--text2);line-height:1.55}
+.gloss dd.lim{font-size:12px;color:var(--muted)}
+.gloss dd.wide{grid-column:span 3}
+.gloss dd.lim{display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 6px;align-content:start}
+.gloss dd.c::before{content:'주의';font-weight:600}
+.gloss dd.d::before{content:'위험';font-weight:600}
+.gloss dl>dt:first-child,.gloss dl>dt:first-child+dd,.gloss dl>dt:first-child+dd+dd,.gloss dl>dt:first-child+dd+dd+dd{border-top:0}
+.gloss .c,.gloss dd.c{color:var(--amber)}.gloss .d,.gloss dd.d{color:var(--red)}.gloss dd.none{color:var(--dim)}
+@media (max-width:860px){
+  .gloss dl{grid-template-columns:minmax(0,1fr);padding:0 var(--pad) 14px}
+  .gloss dd{border-top:0;padding:0 0 4px}
+  .gloss dd.lim{padding-bottom:2px}
+  .gloss dd.lim.none{display:none}
+  .gloss dd.d{padding-bottom:10px}
+  .gloss dd.wide{grid-column:auto;padding-bottom:10px}
+}
+.empty-msg{padding:20px var(--pad);font-size:13px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:16px}
+.bays{--bay-min:0px}
+/* Phones: keep the physical column count; labels wrap instead of being cut, and very wide enclosures scroll inside their own box. */
+@media (max-width:640px){
+  .vds{grid-template-columns:minmax(0,1fr);gap:6px}
+  .vds-l,.vds>.sub{padding-top:0}
+  /* bays keep a readable width; a wide enclosure scrolls sideways inside its box, and a
+     soft glow on an edge shows there is more to that side (the glow stays put, the cover scrolls) */
+  .bays{--bay-min:45px;padding:6px;gap:4px;overflow-x:auto;
+    background:
+      linear-gradient(to right, var(--panel2) 40%, rgba(10,12,15,0)) left center / 28px 100% no-repeat local,
+      linear-gradient(to left, var(--panel2) 40%, rgba(10,12,15,0)) right center / 28px 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, rgba(236,238,242,0.22), rgba(236,238,242,0)) left center / 12px 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, rgba(236,238,242,0.22), rgba(236,238,242,0)) right center / 12px 100% no-repeat scroll,
+      var(--panel2)}
+  .bay{min-height:56px;padding:4px 5px}
+  .bay .t{font-size:11px;line-height:1.25;white-space:normal;word-break:keep-all;overflow-wrap:anywhere}
+}
+</style>
+<style>
+/* demo only: the banner above the header */
+.demo-banner{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;padding:10px var(--pad);border:1px solid var(--sky-line);border-radius:12px;background:var(--sky-bg);color:var(--sky);font-size:13px;font-weight:600}
+.demo-banner span{color:var(--text2);font-size:12px;font-weight:400}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="demo-banner" role="note">데모: 가짜 데이터<span>실제 서버가 아니라 지어낸 값으로 그린 정적 화면입니다. 시각은 2026-11-03 14:30에 고정되어 있고 갱신되지 않습니다.</span></div>
+<header>
+  <div class="head-left">
+    <h1>디스크 상태</h1>
+    <nav class="seg-nav" aria-label="보기 선택">
+      <a href="index.html">개요</a>
+      <a href="disk.html" aria-current="page">디스크 상태<span class="nav-dot" id="nav-dot" hidden></span></a>
+      <a href="admin.html">관리</a>
+    </nav>
+  </div>
+  <div id="badge" class="badge" role="status">
+    <span class="dot" aria-hidden="true"></span>
+    <span class="lbl">불러오는 중</span>
+    <span class="mono" id="badge-time"></span>
+  </div>
+</header>
+
+<div id="notice" class="notice" hidden></div>
+
+<section class="summary" aria-label="요약" id="summary"></section>
+
+<section class="sec">
+  <div class="sec-head">
+    <h2 id="h-cards">확인할 서버</h2>
+  </div>
+  <div class="cards" id="cards"></div>
+  <div class="legend" aria-label="범례">
+    <span><i style="background:var(--blue)"></i>정상</span>
+    <span><i style="background:var(--amber)"></i>주의</span>
+    <span><i style="background:var(--red)"></i>위험</span>
+    <span><i style="border:1px solid var(--sky)"></i>핫스페어, 미사용</span>
+    <span><i class="remove-swatch" style="width:12px;height:9px;border-radius:2px"></i>제거 대상 (교체되어 RAID에서 빠진 불량 디스크)</span>
+    <span><i style="width:12px;height:9px;border-radius:2px;border:1px dashed var(--dim)"></i>빈 슬롯</span>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sec-head">
+    <h2>항목 설명</h2>
+    <span class="sec-note">디스크 상세에 나오는 값과 색 기준</span>
+  </div>
+  <div class="ok-list gloss" id="gloss-list"></div>
+</section>
+
+</div>
+<script src="demo_data.js"></script>
+<script src="disk_rules.js"></script>
+<script>
+(function () {
+  'use strict';
+  // demo: data from demo_data.js, the clock pinned at the data's time, no polling (make_demo.py)
+  var fetch = window.DEMO.fetch, Date = window.DEMO.Date, setInterval = window.DEMO.noInterval;
+
+  // Disk data is collected every 10 min (SMART every hour), so polling once a
+  // minute is plenty.
+  var DATA_URL = 'data/disks.json';
+  var POLL_MS = 60000;
+  var STALE_S = 30 * 60;       // header turns amber when a server's data is older than this
+
+  // storcli reports only an enclosure's slot count, not its front-panel shape.
+  // Columns are estimated from the enclosure model (ProdID); slots fill left to
+  // right, top to bottom. Not checked on site.
+  var MODEL_COLS = [
+    [/^SC846/i, 6],       // Supermicro 4U 24-bay (SC846-P, SC846P): 6 x 4
+    [/^SC847/i, 6],       // Supermicro 4U 36-bay: 6 x 4 front, 6 x 2 rear
+    [/^SC826/i, 4],       // Supermicro 2U 12-bay (SC826N4): 4 x 3
+    [/^SAS3x28$/i, 4],    // expander of a 2U 12-bay chassis: 4 x 3
+    [/^[FR]39$/, 13],     // 90-bay JBOD, front and rear halves: 13 x 3 (low confidence)
+    [/^SGPIO$/i, 4]       // onboard 8-bay backplane: 4 x 2 (low confidence)
+    // SAS3x36 with 20 slots matches no known chassis: default columns
+  ];
+  var DEFAULT_COLS = 6;   // same as the monitoring mail's grids
+  // Confirmed layouts override the estimate: "host /cX/eY": {cols: N}
+  var LAYOUT = {};
+
+  function gridOf(host, e, slots) {
+    var fixed = LAYOUT[host + ' ' + e.id];
+    var cols = fixed && fixed.cols, how = 'confirmed';
+    if (!cols) {
+      MODEL_COLS.forEach(function (r) { if (!cols && r[0].test(e.product || '')) cols = r[1]; });
+      how = cols ? 'model' : 'default';
+      cols = cols || DEFAULT_COLS;
+    }
+    cols = Math.min(cols, slots);
+    return { cols: cols, rows: Math.ceil(slots / cols), how: how };
+  }
+
+  var R = window.DiskRules;
+  var AMBER = '#ffb547', RED = '#ff6b6b', SKY = '#7dd3fc', BLUE = '#3b8fbf';
+  var SPARE = { ghs: 1, dhs: 1, ugood: 1, ugunsp: 1 };
+  var LEVEL_LABEL = { ok: '정상', caution: '주의', danger: '위험', remove: '제거 대상' };
+
+  var data = null, fetchFailed = false;
+  var okOpen = {};             // rows opened in the panel of servers with nothing to check
+  var sel = '';                // "host|drive id" of the drive whose details are open
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function two(n) { return (n < 10 ? '0' : '') + n; }
+  function hhmm(epoch) { var d = new Date(epoch * 1000); return two(d.getHours()) + ':' + two(d.getMinutes()); }
+  // "10/28 " when the time is not from today, else nothing.
+  function dayPrefix(epoch) {
+    var d = new Date(epoch * 1000);
+    return d.toDateString() === new Date().toDateString() ? '' : (d.getMonth() + 1) + '/' + d.getDate() + ' ';
+  }
+  function color(level) { return level === 'danger' ? RED : (level === 'caution' ? AMBER : null); }
+  // 'remove' (failed drive already out of RAID) never raises a server's level.
+  function worse(a, b) { var r = { ok: 0, remove: 0, caution: 1, danger: 2 }; return r[b] > r[a] ? b : a; }
+
+  function servers() { return (data && data.servers) || []; }
+
+  // Per-host view model: every drive with its verdict, enclosures with drives.
+  function model(x) {
+    var d = x.disks;
+    if (!d) return { host: x.host, missing: true, level: 'ok', drives: [], items: [], maint: x.maintenance };
+    var items = [];
+    (d.drives || []).forEach(function (dr) { items.push({ host: x.host, key: x.host + '|' + dr.id, where: dr.id, d: dr, j: R.judge(dr) }); });
+    (d.direct || []).forEach(function (dr) { items.push({ host: x.host, key: x.host + '|dev:' + dr.dev, where: dr.dev, d: dr, j: R.judge(dr), direct: true }); });
+    var level = 'ok';
+    items.forEach(function (i) { level = worse(level, i.j.level); });
+    (d.vds || []).forEach(function (v) { level = worse(level, R.vdLevel(v)); });
+    var hotEncl = (d.enclosures || []).filter(function (e) { return R.enclLevel(e) !== 'ok'; });
+    hotEncl.forEach(function (e) { level = worse(level, R.enclLevel(e)); });
+    var ms = R.missing(d), manyBad = R.manyBad(d), cacheRisks = R.cacheRisks(d), cacheWarn = R.cacheWarn(d);
+    if (cacheWarn.length) level = worse(level, 'caution');
+    if (ms.vds.length || ms.enclosures.length || manyBad.length) level = 'danger';
+    return { host: x.host, d: d, items: items, level: level, hotEncl: hotEncl, maint: x.maintenance, manyBad: manyBad, cacheRisks: cacheRisks, cacheWarn: cacheWarn,
+             danger: items.filter(function (i) { return i.j.level === 'danger'; }).length,
+             caution: items.filter(function (i) { return i.j.level === 'caution'; }).length,
+             remove: items.filter(function (i) { return i.j.level === 'remove'; }).length };
+  }
+
+  // ---------- summary ----------
+
+  function tile(label, value, unit, note, valueColor, foot, noteMono) {
+    return '<div class="tile"><span class="tile-label">' + label + '</span>' +
+      '<div class="stack"><div class="tile-val"><b' + (valueColor ? ' style="color:' + valueColor + '"' : '') + '>' + value + '</b><span>' + unit + '</span></div>' +
+      '<span class="tile-note' + (noteMono ? ' mono' : '') + '">' + note + '</span></div>' +
+      '<div class="tile-foot">' + (foot || '') + '</div></div>';
+  }
+
+  function renderSummary(models) {
+    var all = [];
+    models.forEach(function (m) { all = all.concat(m.items); });
+    var flagged = all.filter(function (i) { return i.j.level === 'danger' || i.j.level === 'caution'; })
+      .sort(function (a, b) { return (b.j.level === 'danger') - (a.j.level === 'danger'); });
+    var dn = flagged.filter(function (i) { return i.j.level === 'danger'; }).length;
+    var cn = flagged.length - dn;
+    var rn = all.filter(function (i) { return i.j.level === 'remove'; }).length;
+    var list = '<div class="list">' + flagged.slice(0, 2).map(function (i) {
+      return '<div><span>' + esc(i.host + ' ' + i.where) + '</span><span style="color:' + color(i.j.level) + '">' + (i.j.level === 'danger' ? '위험' : '주의') + '</span></div>';
+    }).join('') + '</div>';
+
+    // drives already out of RAID ("remove") are reported on their own, not here
+    var hdd = all.filter(function (i) { return !R.isSsd(i.d) && R.temp(i.d) != null && i.j.level !== 'remove'; })
+      .sort(function (a, b) { return R.temp(b.d) - R.temp(a.d); });
+    var hot = hdd[0];
+    var hotT = hot ? R.temp(hot.d) : null;
+    var hotLvl = hot ? R.levels(hot.d).temp : 'ok';
+    var bar = hotT == null ? '' : '<div class="tbar"><div class="track" aria-hidden="true"><div style="width:' +
+      Math.max(0, Math.min(100, Math.round((hotT - 20) / 60 * 100))) + '%;background:' + (color(hotLvl) || BLUE) + '"></div></div>' +
+      '<div class="ends"><span>20°C</span><span>80°C</span></div></div>';
+
+    var vds = [];
+    models.forEach(function (m) {
+      ((m.d && m.d.vds) || []).forEach(function (v) { vds.push({ host: m.host, v: v, lvl: R.vdLevel(v) }); });
+      R.missing(m.d).vds.forEach(function (v) { vds.push({ host: m.host, v: v, lvl: 'danger', gone: true }); });
+    });
+    var badVd = vds.filter(function (x) { return x.lvl !== 'ok'; })
+      .sort(function (a, b) { return (b.lvl === 'danger') - (a.lvl === 'danger'); });
+    var vdNote = badVd.length ? badVd.slice(0, 2).map(function (x) { return x.host + ' ' + x.v.id + ' ' + (x.gone ? '사라짐' : R.vdLabel(x.v)); }).join(', ') : '모두 정상';
+    var vdSegs = '<div class="segs" aria-hidden="true">' + vds.map(function (x) {
+      return '<i style="background:' + (color(x.lvl) || SKY) + '"></i>';
+    }).join('') + '</div>';
+
+    var srvSegs = '<div class="segs" aria-hidden="true">' + models.map(function (m) {
+      return '<i style="background:' + (m.missing ? 'transparent;border:1px dashed #8b919c' : (color(m.level) || BLUE)) + '"></i>';
+    }).join('') + '</div>';
+
+    $('summary').innerHTML =
+      tile('확인 필요 디스크', flagged.length, '개', '위험 ' + dn + ', 주의 ' + cn + (rn ? ', 제거 대상 ' + rn : ''), dn ? RED : (cn ? AMBER : null), flagged.length ? list : '') +
+      tile('HDD 최고 온도', hotT == null ? '—' : hotT, '°C', hot ? esc(hot.host + ' ' + hot.where) : '—', color(hotLvl), bar, true) +
+      tile('RAID 볼륨', vds.length - badVd.length, '/' + vds.length + ' 정상', esc(vdNote), badVd.length ? color(badVd.reduce(function (a, x) { return worse(a, x.lvl); }, 'ok')) : null, vds.length ? vdSegs : '') +
+      tile('전체 디스크', all.length, '개', '서버 ' + models.length + '대', null, srvSegs);
+  }
+
+  // ---------- cards ----------
+
+  function bayClass(i) {
+    if (i.j.level !== 'ok') return i.j.level;
+    return SPARE[R.stateKey(i.d)] ? 'spare' : '';
+  }
+  // Flagged bays show why (the worst reason, shortened) instead of a normal-looking temperature.
+  function shortReason(r) {
+    return r.replace(/^재할당 섹터 /, '재할당 ').replace(/^보류 섹터 /, '보류 ')
+            .replace(/^복구 불가 섹터 /, '복구 불가 ').replace(/^온도 /, '');
+  }
+  // The note under the temperature: why it is flagged (the worst reason, shortened),
+  // or its role for spare and to-remove drives; none for a normal drive or when the
+  // only reason is the temperature, which the temperature line already shows in colour.
+  function bayNote(i) {
+    if (i.j.level === 'remove') return '제거 대상';
+    if (i.j.reasons.length) { var r = shortReason(i.j.reasons[0]); return /°C$/.test(r) ? '' : r; }
+    // a spare with a temperature says so with its ring (legend below); the name is one click away
+    if (R.temp(i.d) == null) return R.stateLabel(i.d);
+    return '';
+  }
+  function bayTempText(i) {
+    var t = R.temp(i.d);
+    return t == null ? '' : t + '°C';
+  }
+  function bayHtml(i, label) {
+    var on = i.key === sel, note = bayNote(i), temp = bayTempText(i);
+    var tColor = color(R.levels(i.d).temp);
+    return '<button type="button" class="bay ' + bayClass(i) + '" data-key="' + esc(i.key) + '" aria-pressed="' + on + '" ' +
+      (i.j.reasons.length ? 'title="' + esc(i.j.reasons.join(', ')) + '" ' : '') +
+      'aria-label="' + esc(i.host + ' ' + i.where + ' ' + LEVEL_LABEL[i.j.level]) + '">' +
+      '<span class="top"><span class="led" aria-hidden="true"></span>' + esc(label) + '</span>' +
+      '<span class="body">' + (temp ? '<span class="t"' + (tColor ? ' style="color:' + tColor + '"' : '') + '>' + temp + '</span>' : '') +
+      (note ? '<span class="note">' + esc(note) + '</span>' : '') + '</span></button>';
+  }
+
+  function enclosureHtml(m, e, items) {
+    var bySlot = {};
+    items.forEach(function (i) { bySlot[i.d.slot] = i; });
+    var maxSlot = items.reduce(function (a, i) { return Math.max(a, i.d.slot); }, -1);
+    var slots = Math.max(e.slots || 0, maxSlot + 1);
+    var grid = gridOf(m.host, e, slots);
+    var cols = grid.cols;
+    var cells = [];
+    for (var s = 0; s < slots; s++) {
+      cells.push(bySlot[s] ? bayHtml(bySlot[s], 's' + s)
+        : '<div class="bay empty" title="빈 슬롯"><span class="top">s' + s + '</span></div>');
+    }
+    // "공기 25°C · 칩 85°C", each coloured by its own limit
+    var et = R.enclTemps(e), L = R.LIMITS;
+    var tPart = function (name, v, lim) {
+      var c = color(v >= lim[1] ? 'danger' : (v >= lim[0] ? 'caution' : 'ok'));
+      return '<span' + (c ? ' style="color:' + c + '"' : '') + '>' + name + ' ' + v + '°C</span>';
+    };
+    var temps = [et.air != null ? tPart('공기', et.air, L.encl_air) : '', et.chip != null ? tPart('칩', et.chip, L.encl_chip) : '']
+      .filter(Boolean).join(' · ');
+    return '<div class="encl"><div class="encl-head"><b>' + esc(e.id) + '</b><span>' + esc(e.product || '') + '</span>' +
+      '<span>' + slots + '슬롯 중 ' + items.length + '개 장착</span>' +
+      (temps ? '<span class="encl-temp" title="인클로저 센서 온도">' + temps + '</span>' : '') +
+      '</div>' +
+      '<div class="bays" style="grid-template-columns:repeat(' + cols + ',minmax(var(--bay-min),1fr))">' + cells.join('') + '</div></div>';
+  }
+
+  function factsHtml(m, i) {
+    var d = i.d, s = d.smart || {}, ssd = R.isSsd(d), t = R.temp(d), L = R.levels(d);
+    var smartText = s.error ? '읽기 실패' : (s.passed === false ? '실패' : (d.smart_alert ? '경고' : (s.passed ? '통과' : '—')));
+    if (s.checked) smartText += ' · ' + dayPrefix(s.checked) + hhmm(s.checked);
+    var vd = null;
+    if (!i.direct && d.dg != null) {
+      ((m.d && m.d.vds) || []).forEach(function (v) { if (v.dg === d.dg && v.id.indexOf('/c' + d.ctrl + '/') === 0) vd = v; });
+    }
+    var num = function (v) { return v == null ? '—' : String(v); };
+    var facts = [
+      ['상태', R.stateLabel(d), color(L.state)],
+      ['종류', ((d.med || '') + ' ' + (d.intf || d.tran || '').toUpperCase()).trim() || '—', null],
+      ['모델', d.model || '—', null],
+      ['용량', d.size || '—', null],
+      ['RAID 볼륨', vd ? vd.id + ' ' + vd.raid : (i.direct ? '직접 연결' : '—'), null],
+      ['온도', t == null ? '—' : t + '°C', color(L.temp)],
+      ['재할당 섹터', num(s.realloc), color(L.realloc)],
+      ['보류 섹터', num(s.pending), color(L.pending)],
+      ['복구 불가 섹터', num(s.uncorrectable), color(L.uncorrectable)],
+      ['매체 오류', num(d.media_err), color(L.media_err)],
+      ['기타 오류', num(d.other_err), null],
+      ['예측 실패', num(d.pred_fail), color(L.pred_fail)],
+      ['가동 시간', s.power_on_hours == null ? '—' : (s.power_on_hours / 8760).toFixed(1) + '년', null],
+      ['일련번호', d.sn || '—', null],
+      ['SMART 결과', smartText, color(L.smart)]
+    ];
+    if (ssd || s.wear_pct != null) facts.splice(9, 0, ['마모', s.wear_pct == null ? '—' : s.wear_pct + '%', color(L.wear_pct)]);
+    var where = i.direct ? '내장 ' + d.dev : '인클로저 ' + d.encl + ' 슬롯 ' + d.slot;
+    var label = LEVEL_LABEL[i.j.level];
+    return '<div class="detail"><div class="detail-head"><div class="l"><b>' + esc(i.where) + '</b><span class="sub">' + esc(where) + '</span></div>' +
+      '<span class="pill ' + (i.j.level === 'ok' ? '' : i.j.level) + '"><i aria-hidden="true"></i>' + label + '</span></div>' +
+      (i.j.reasons.length ? '<span class="err" style="color:' + (color(i.j.level) || 'var(--muted)') + '">' +
+        (i.j.level === 'remove' ? 'RAID에 속하지 않은 디스크입니다. 교체 후 남은 불량 디스크로 추정됩니다: ' : '') + esc(i.j.reasons.join(', ')) + '</span>' : '') +
+      '<div class="facts">' + facts.map(function (f) {
+        return '<div><span>' + f[0] + '</span><span' + (f[2] ? ' style="color:' + f[2] + '"' : '') + '>' + esc(f[1]) + '</span></div>';
+      }).join('') + '</div></div>';
+  }
+
+  // "점검 중" mark set on /admin or with maintenance.py (planned power-off)
+  // "10/30 18:00까지" when an end is set, else when it started: "10/29 15:37부터"
+  function maintUntil(mt) {
+    var t = mt.until || mt.set_at;
+    if (!t) return '';
+    var d = new Date(t * 1000);
+    return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + (mt.until ? '까지' : '부터');
+  }
+
+  // last time any of the missing RAID sets / enclosures was still there
+  function seenText(ms) {
+    var t = Math.max.apply(null, ms.vds.concat(ms.enclosures).map(function (x) { return x.seen || 0; }));
+    return t > 0 ? dayPrefix(t) + hhmm(t) : '—';
+  }
+
+  function usedEncls(m) {
+    return (m.d.enclosures || []).filter(function (e) {
+      return m.items.some(function (i) { return !i.direct && i.d.encl === e.id; });
+    });
+  }
+  function diskCounts(m) { return '디스크 ' + m.items.length + '개, 인클로저 ' + usedEncls(m).length + '개'; }
+
+  function cardHtml(m) {
+    if (m.missing) {
+      return '<div class="card"><div class="card-head"><div class="l"><span class="name">' + esc(m.host) + '</span>' +
+        (m.maint ? '<span class="sub maint">점검 중 · ' + esc(maintUntil(m.maint)) + '</span>' : '') + '</div></div>' +
+        '<span class="sub">디스크 정보를 아직 수신하지 못했습니다.</span></div>';
+    }
+    var d = m.d;
+    // each count in its own color, so caution and to-remove do not read as danger
+    var parts = [];
+    var part = function (text, col) { parts.push('<span style="color:' + col + '">' + text + '</span>'); };
+    if (m.danger) part('위험 ' + m.danger, RED);
+    if (m.caution) part('주의 ' + m.caution, AMBER);
+    if (m.remove) part('제거 대상 ' + m.remove, 'var(--muted)');
+    var badVd = (d.vds || []).filter(function (v) { return R.vdLevel(v) !== 'ok'; });
+    if (badVd.length) part('RAID ' + badVd.length, color(badVd.reduce(function (a, v) { return worse(a, R.vdLevel(v)); }, 'ok')));
+    m.hotEncl.forEach(function (e) {
+      var t = R.enclTemps(e), L = R.LIMITS;
+      var why = t.air != null && t.air >= L.encl_air[0] ? '공기 ' + t.air + '°C' : (t.chip != null && t.chip >= L.encl_chip[0] ? '칩 ' + t.chip + '°C' : '센서 이상');
+      part('인클로저 ' + e.id + ' ' + why, color(R.enclLevel(e)));
+    });
+    var ms = R.missing(d);
+    if (ms.vds.length) part('사라진 RAID ' + ms.vds.length, RED);
+    if (ms.enclosures.length) part('사라진 인클로저 ' + ms.enclosures.length, RED);
+    m.manyBad.forEach(function (b) { part('/c' + b.ctrl + ' 불량 ' + b.n, RED); });
+    if (m.cacheWarn.length) part('캐시 보호 ' + m.cacheWarn.length, AMBER);
+    var drives =m.items.filter(function (i) { return !i.direct; });
+    var encls = usedEncls(m);
+    var html = '<div class="card"><div class="card-head"><div class="l"><span class="name">' + esc(m.host) + '</span>' +
+      '<span class="sub">' + esc(diskCounts(m)) + '</span>' +
+      (m.maint ? '<span class="sub maint">점검 중 · ' + esc(maintUntil(m.maint)) + '</span>' : '') + '</div>' +
+      '<span class="sub">' + (parts.length ? parts.join('<span style="color:var(--muted)">, </span>') : '정상') + '</span></div>';
+    if (d.errors && d.errors.length) html += '<span class="err">수집 오류: ' + esc(d.errors.join(', ')) + '</span>';
+    if (ms.vds.length || ms.enclosures.length) {
+      html += '<span class="err" style="color:' + RED + '">사라짐: ' +
+        ms.vds.map(function (v) { return 'RAID 볼륨 ' + v.id + ' (' + [v.raid, v.size].filter(Boolean).join(' ') + ')'; })
+          .concat(ms.enclosures.map(function (e) { return '인클로저 ' + e.id; })).map(esc).join(', ') +
+        ' (마지막 확인 ' + esc(seenText(ms)) + '). 일부러 없앤 경우 이 서버에서 root로 ' +
+        '<code>/opt/lab-dashboard/disk_collect.py --reset-expected</code>를 실행하면 기준이 다시 잡힙니다.</span>';
+    }
+    m.manyBad.forEach(function (b) {
+      html += '<span class="err" style="color:' + RED + '">/c' + esc(b.ctrl) + '에 불량(UBad) 디스크가 ' + b.n + '개 있습니다. 인클로저 전원이나 연결이 끊겼을 수 있으니 RAID 볼륨과 마운트를 확인하십시오.</span>';
+    });
+    var noUnit = m.cacheRisks.filter(function (r) { return r.level === 'info'; });
+    if (noUnit.length) {
+      html += '<span class="sub">정전에 대비한 캐시 보호 장치가 없습니다: ' +
+        esc(noUnit.map(function (r) { return r.id; }).join(', ')) + ' (AWB)</span>';
+    }
+    if (m.cacheWarn.length) {
+      html += '<span class="err">정전에 대비한 캐시 보호 장치가 정상이 아닙니다: ' +
+        esc(m.cacheWarn.map(function (r) { return r.id + ' (AWB, ' + r.why + ')'; }).join(', ')) + '</span>';
+    }
+    if ((d.vds || []).length) {
+      html += '<div class="vds"><span class="vds-l">RAID 볼륨</span><div class="vd-list">' + d.vds.map(function (v) {
+        return '<span class="vd ' + R.vdLevel(v) + '"><b>' + esc(v.id) + '</b><span>' + esc(v.raid) + '</span>' +
+          '<span class="vd-size">' + esc(v.size) + '</span><span class="vd-st">' + esc(R.vdLabel(v)) + '</span>' +
+          (R.writePolicy(v) ? '<span class="vd-size" title="쓰기 캐시 정책">' + R.writePolicy(v) + '</span>' : '') + '</span>';
+      }).join('') + '</div></div>';
+      var cb = Object.keys(d.cache_backup || {}).sort();
+      if (cb.length) {
+        html += '<div class="vds"><span class="vds-l">캐시 보호</span><span class="sub">' + cb.map(function (c) {
+          var b = d.cache_backup[c];
+          return '/c' + esc(c) + ' ' + (b ? esc(b.kind + ' ' + (b.state || '상태 알 수 없음')) : '없음');
+        }).join(' · ') + '</span></div>';
+      }
+    }
+    encls.forEach(function (e) {
+      html += enclosureHtml(m, e, drives.filter(function (i) { return i.d.encl === e.id; }));
+    });
+    var direct = m.items.filter(function (i) { return i.direct; });
+    if (direct.length) {
+      html += '<div class="internal"><span>내장</span>' + direct.map(function (i) {
+        var on = i.key === sel;
+        return '<button type="button" class="bay ' + bayClass(i) + '" data-key="' + esc(i.key) + '" aria-pressed="' + on + '">' +
+          '<span class="led" aria-hidden="true" style="display:inline-block;width:7px;height:7px;border-radius:50%"></span>' +
+          '<b>' + esc(i.d.dev) + '</b>' + (bayTempText(i) ? '<span class="t">' + bayTempText(i) + '</span>' : '') +
+          (bayNote(i) ? '<span class="note">' + esc(bayNote(i)) + '</span>' : '') + '</button>';
+      }).join('') + '</div>';
+    }
+    var picked = m.items.filter(function (i) { return i.key === sel; })[0];
+    if (picked) html += factsHtml(m, picked);
+    return html + '</div>';
+  }
+
+  function renderCards(models) {
+    // Servers to look at first; the rest are one row each in a panel at the bottom. A server
+    // without disk data is not "normal", so it stays with the others.
+    var isOk = function (m) { return m.level === 'ok' && !m.missing; };
+    var shown = models.filter(function (m) { return !isOk(m); });
+    var ok = models.filter(isOk);
+    $('h-cards').textContent = '확인할 서버 ' + shown.length + '대';
+    var html = shown.length ? shown.map(cardHtml).join('') : '<div class="empty-msg">확인이 필요한 서버가 없습니다.</div>';
+    if (ok.length) {
+      html += '<div class="sec"><div class="sec-head"><h2>정상 서버 ' + ok.length + '대</h2></div><div class="ok-list">' + ok.map(function (m) {
+        var open = !!okOpen[m.host];
+        return '<button type="button" class="ok-row" data-ok-host="' + esc(m.host) + '" aria-expanded="' + open + '">' +
+          '<span class="dot" aria-hidden="true"></span><span class="name">' + esc(m.host) + '</span>' +
+          '<span class="info">' + esc(diskCounts(m)) + '</span></button>' + (open ? cardHtml(m) : '');
+      }).join('') + '</div></div>';
+    }
+    $('cards').innerHTML = html;
+  }
+
+  // ---------- header ----------
+
+  function renderHeader(models) {
+    // a server marked 점검 중 is expected to be silent: it does not make the header amber
+    var epochs = models.filter(function (m) { return !m.missing && !m.maint; }).map(function (m) { return m.d.epoch; });
+    var newest = epochs.length ? Math.max.apply(null, epochs) : null;
+    var oldest = epochs.length ? Math.min.apply(null, epochs) : null;
+    var stale = !newest || Date.now() / 1000 - oldest > STALE_S;
+    var el = $('badge');
+    el.className = 'badge' + (stale && data ? ' stale' : '');
+    el.querySelector('.lbl').textContent = !data ? (fetchFailed ? '데이터를 불러오지 못했습니다' : '불러오는 중') : (stale ? '갱신 지연' : '마지막 갱신');
+    $('badge-time').textContent = newest ? dayPrefix(newest) + hhmm(newest) : '';
+
+    var lvl = models.reduce(function (a, m) { return worse(a, m.level); }, 'ok');
+    var dot = $('nav-dot');
+    dot.hidden = lvl === 'ok';
+    dot.style.background = color(lvl) || 'transparent';
+    dot.setAttribute('aria-label', lvl === 'danger' ? '위험 있음' : '주의 있음');
+
+    // Servers that went quiet at the same minute share one line (an outage hits
+    // several at once), so the box stays short; the order is the page's server order.
+    var notes = [], missing = [], byTime = {}, times = [];
+    models.forEach(function (m) {
+      if (m.maint) return;
+      if (m.missing) missing.push(m.host);
+      else if (Date.now() / 1000 - m.d.epoch > STALE_S) {
+        var t = hhmm(m.d.epoch);
+        if (!byTime[t]) { byTime[t] = []; times.push(t); }
+        byTime[t].push(m.host);
+      }
+    });
+    var hosts = function (l) { return l.join(', ') + (l.length > 1 ? ' (' + l.length + '대)' : ''); };
+    if (missing.length) notes.push(hosts(missing) + ': 디스크 정보를 아직 수신하지 못했습니다.');
+    times.forEach(function (t) { notes.push(hosts(byTime[t]) + ': 마지막 수집 ' + t + ' 이후 새 정보가 없습니다.'); });
+    $('notice').hidden = !notes.length;
+    $('notice').innerHTML = notes.map(function (n) { return '<span>' + esc(n) + '</span>'; }).join('');
+  }
+
+  // ---------- 항목 설명 ----------
+
+  // Limits come from DiskRules.LIMITS, the same numbers that colour the cells.
+  // Each criterion is [주의, 위험], '' for none.
+  function lim(l, unit) {
+    return [0, 1].map(function (i) { return l[i] != null ? l[i] + unit + ' 이상' : ''; });
+  }
+  // Two kinds on one criterion: HDD 55°C 이상 / SSD 70°C 이상
+  function limTwo(a, b, la, lb, unit) {
+    return [0, 1].map(function (i) { return la + ' ' + a[i] + unit + ' 이상<br>' + lb + ' ' + b[i] + unit + ' 이상'; });
+  }
+  function renderGloss() {
+    var L = R.LIMITS;
+    var groups = [
+      ['판정하는 값', '기준에 닿으면 색이 표시됩니다.', [
+        ['상태', 'Drive State', 'RAID 카드가 보고한 디스크 상태입니다. 사용 중·핫스페어·미사용은 정상입니다.',
+          ['재구축 중·복사 중', '불량·오프라인·고장·없음']],
+        ['SMART 결과', 'S.M.A.R.T. overall', '디스크 자체 진단의 종합 결과입니다. 아래 값들과 별개로 디스크가 스스로 판단합니다.',
+          ['', '실패·경고']],
+        ['재할당 섹터', 'Reallocated Sectors', '손상된 섹터를 디스크가 예비 섹터로 옮긴 수입니다. 오래된 디스크는 몇 개 있을 수 있고, 계속 늘면 교체를 준비합니다.',
+          lim(L.realloc, '개')],
+        ['보류 섹터', 'Current Pending Sectors', '읽기가 불안정해 재할당 여부를 지켜보는 섹터로, 지금 그 섹터의 데이터가 위험합니다. 다시 쓰기에 성공하면 사라지기도 합니다.',
+          lim(L.pending, '개')],
+        ['복구 불가 섹터', 'Offline Uncorrectable', '끝내 읽지 못한 섹터입니다. 그 섹터의 데이터는 잃었을 수 있습니다.',
+          lim(L.uncorrectable, '개')],
+        ['마모', 'SSD Wear', 'SSD가 쓸 수 있는 총량 중 사용한 비율입니다. 100%에 가까우면 언제든 쓰기가 멈출 수 있습니다.',
+          lim(L.wear_pct, '%')],
+        ['매체 오류', 'Media Error Count', '읽기·쓰기 중 디스크 매체에서 난 오류를 RAID 카드가 센 수입니다. RAID 카드에 연결된 디스크만 나옵니다.',
+          lim(L.media_err, '개')],
+        ['예측 실패', 'Predictive Failure Count', '디스크가 고장 예측 신호를 RAID 카드에 보낸 횟수입니다.',
+          lim(L.pred_fail, '회')],
+        ['디스크 온도', 'Temperature', '디스크 안쪽 온도입니다.',
+          limTwo(L.temp_hdd, L.temp_ssd, 'HDD', 'SSD', '°C')],
+        ['인클로저 온도', 'Enclosure Temperature', '인클로저 안 공기와, 디스크를 연결하는 칩(익스팬더)의 온도입니다. 이 칩은 평소에도 80°C 안팎입니다.',
+          limTwo(L.encl_air, L.encl_chip, '공기', '칩', '°C')]
+      ]],
+      ['참고 값', '판정에 쓰지 않습니다.', [
+        ['기타 오류', 'Other Error Count', '케이블·연결 등 디스크 매체 밖에서 난 오류 수입니다. 갑자기 늘면 케이블이나 슬롯을 의심합니다.'],
+        ['가동 시간', 'Power-On Hours', '디스크가 기록한, 전원이 켜져 있던 시간의 합입니다. 일부 모델은 대기·절전 시간을 빼고 세서 실제보다 짧게 나옵니다.']
+      ]],
+      ['용어', '인클로저, 슬롯, RAID 볼륨, 제거 대상, 캐시', [
+        ['인클로저', 'Enclosure', '디스크 여러 개를 장착하는 케이스로, 서버 안에 있거나 옆에 따로 붙어 있습니다. /c1/e0은 1번 RAID 카드에 연결된 0번 인클로저입니다.'],
+        ['슬롯', 'Slot', '인클로저에서 디스크 하나가 장착되는 자리로, s7은 7번 슬롯입니다. 화면의 슬롯 배치는 인클로저 모델로 추정한 것이라 실제 앞면과 다를 수 있습니다.'],
+        ['RAID 볼륨', 'Virtual Drive (VD)', '여러 디스크를 하나처럼 묶은 볼륨으로, 디스크 하나가 고장 나도 데이터가 남도록 구성합니다. 성능 저하·복구 중 등 정상이 아니면 주의, 오프라인이면 위험으로 표시합니다.'],
+        ['제거 대상', 'Unconfigured Bad (UBad)', '문제가 있지만 RAID에 속하지 않은 디스크로, 교체 후 남은 불량 디스크로 추정됩니다. 분리해도 데이터에 영향이 없어 서버 경고에서 제외합니다. 다만 RAID 카드 하나에서 ' + L.ubad_ctrl[1] + '개 이상이면 인클로저 전원·연결 문제일 수 있어 위험으로 표시합니다.'],
+        ['쓰기 캐시', 'WB, AWB, WT', 'RAID 카드가 쓰기를 메모리에 먼저 받는 방식입니다. WB는 캐시 보호 장치가 정상일 때만, AWB는 항상 캐시를 쓰고, WT는 쓰지 않습니다.'],
+        ['캐시 보호', 'CacheVault, BBU', '정전 때 RAID 카드의 쓰기 캐시를 지키는 장치입니다. 없거나 정상이 아닌데 AWB를 쓰면 정전 시 캐시에 있던 데이터를 잃을 수 있습니다. 없으면 참고로 안내하고, 정상이 아니면 주의로 표시합니다.']
+      ]]
+    ];
+    var cell = function (v, cls) { return '<dd class="lim ' + (v ? cls : 'none') + '">' + (v ? '<span>' + v + '</span>' : '') + '</dd>'; };
+    $('gloss-list').innerHTML = groups.map(function (g) {
+      return '<details><summary class="ok-row"><span class="name">' + g[0] + '</span><span class="info">' + g[1] + '</span></summary><dl>' + g[2].map(function (r) {
+        // without a criterion the text takes the criterion columns too
+        return '<dt>' + r[0] + '<small>' + r[1] + '</small></dt>' +
+          (r[3] ? '<dd>' + r[2] + '</dd>' + cell(r[3][0], 'c') + cell(r[3][1], 'd') : '<dd class="wide">' + r[2] + '</dd>');
+      }).join('') + '</dl></details>';
+    }).join('');
+  }
+
+  function render() {
+    var models = servers().map(model);
+    renderHeader(models);
+    renderSummary(models);
+    renderCards(models);
+  }
+
+  function tick() {
+    fetch(DATA_URL, { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (d) {
+      fetchFailed = false;
+      data = d;
+      render();
+    }).catch(function (e) {
+      console.error(e);
+      fetchFailed = true;
+      if (!data) {
+        $('notice').hidden = false;
+        $('notice').textContent = '디스크 상태 데이터를 불러오지 못했습니다. 잠시 후 다시 시도합니다.';
+        renderHeader([]);
+      }
+    });
+  }
+
+  $('cards').addEventListener('click', function (e) {
+    var okBtn = e.target.closest('button[data-ok-host]');
+    if (okBtn) { var h = okBtn.dataset.okHost; okOpen[h] = !okOpen[h]; return render(); }
+    var b = e.target.closest('button[data-key]');
+    if (!b) return;
+    var k = b.getAttribute('data-key');
+    sel = sel === k ? '' : k;
+    render();
+  });
+  renderGloss();
+  tick();
+  setInterval(tick, POLL_MS);
+})();
+</script>
+</body>
+</html>

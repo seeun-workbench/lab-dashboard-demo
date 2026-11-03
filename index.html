@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>데모 · 연구실 서버 현황</title>
+<!-- Home screen: icon drawn by make_icon.py; short name so iOS does not cut it off -->
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Monitor">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
+<style>
+.warn-list{display:flex;flex-direction:column;gap:4px;font-family:var(--mono);font-size:12px}
+.warn-list div{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:8px}
+.warn-list span:first-child{color:var(--text2);overflow-wrap:anywhere}
+.warn-list span:last-child{color:var(--amber)}
+
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;font-size:11px;color:var(--muted)}
+.legend>span{display:flex;align-items:center;gap:8px}
+.legend .ramp{width:112px;height:8px;border-radius:4px}
+.legend .amber{width:14px;height:4px;border-radius:2px;background:var(--amber)}
+
+.srv-grid{display:grid;grid-auto-flow:dense;gap:10px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.card{min-height:252px;border-radius:16px;padding:16px var(--pad);display:flex;flex-direction:column;justify-content:space-between;gap:14px;border:1px solid transparent}
+.card.wide{grid-column:span 2;flex-direction:row;flex-wrap:wrap;gap:16px 20px}
+.card.down{background:var(--panel);color:var(--text2);border:1px dashed var(--dim);justify-content:flex-start}
+.col{flex:1 1 180px;min-width:0;display:flex;flex-direction:column;justify-content:space-between;gap:14px}
+.col-gpu{flex:1 1 180px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.small{font-size:11px}
+/* a problem on a server that still answers: a pill readable on every card colour */
+.flags{display:flex;flex-wrap:wrap;gap:4px}
+.flag{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;color:var(--panel);background:var(--amber);overflow-wrap:anywhere}
+.flag.danger{background:var(--red)}
+.cpu{font-family:var(--mono);font-size:28px;font-weight:600;line-height:1;letter-spacing:-0.02em}
+.bars{display:flex;flex-direction:column;gap:10px}
+.mem-row{display:flex;flex-direction:column;gap:6px}
+.mem-head{display:flex;justify-content:space-between;align-items:baseline;font-size:11px}
+.mem-head b{font-family:var(--mono);font-size:12px;font-weight:500}
+.track{border-radius:3px;overflow:hidden}
+.track>div{height:100%}
+.disks{display:flex;flex-direction:column;gap:5px;padding-top:4px}
+.disk{display:grid;grid-template-columns:48px minmax(0,1fr) 34px;align-items:center;gap:8px;font-size:11px}
+.disk span:first-child{font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.disk span:last-child{text-align:right;font-family:var(--mono)}
+.down-info{display:flex;flex-direction:column;gap:12px;font-size:13px}
+.down-info span:last-child{overflow-wrap:anywhere}
+.gpu-head{display:flex;justify-content:space-between;font-size:11px}
+.gpu-grid{flex:1 1 auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(84px,1fr);gap:8px}
+.gpu{border-radius:12px;padding:10px 12px;border:1px solid rgba(255,255,255,0.14);display:flex;flex-direction:column;justify-content:space-between;gap:6px}
+.gpu.warn{border-color:var(--amber)}
+.gpu-top{display:flex;justify-content:space-between;gap:6px;font-family:var(--mono);font-size:11px}
+.gpu-util{font-family:var(--mono);font-size:20px;font-weight:600;line-height:1;letter-spacing:-0.02em}
+.gpu-note{font-size:11px;color:var(--amber)}
+
+.tabs{display:flex;gap:4px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.tabs button{min-height:36px;padding:0 14px;border:0;border-radius:8px;font-family:'IBM Plex Sans KR',sans-serif;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;background:transparent;color:var(--muted)}
+.tabs button[aria-pressed="true"]{background:var(--raised);color:var(--text)}
+.tabs button span{font-family:var(--mono);font-size:12px;color:var(--dim)}
+.tabs button[aria-pressed="true"] span{color:var(--sky)}
+.table{overflow-x:auto;border:1px solid var(--line);border-radius:16px;background:var(--panel)}
+.table-in{min-width:840px}
+.tr{display:grid;grid-template-columns:96px 1.4fr 1fr 1fr 0.9fr 0.8fr 88px;gap:20px;align-items:center;padding:14px var(--pad)}
+.th{padding:12px var(--pad);font-size:11px;color:var(--muted);border-bottom:1px solid var(--line2);align-items:start}
+.tr.first{border-top:1px solid var(--line2)}
+.tr.next{border-top:1px solid var(--line3)}
+.tr.top{border-top:none}
+.tr.mine{box-shadow:inset 3px 0 0 var(--sky);background:rgba(125,211,252,0.05)}
+.tr.mine .avatar{box-shadow:0 0 0 2px var(--panel),0 0 0 3.5px var(--sky)}
+.job-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.me-pick{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.me-pick select{min-height:36px;max-width:160px;padding:0 10px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;font-family:'IBM Plex Sans KR',sans-serif;font-size:13px}
+.job-srv{font-family:var(--mono);font-size:13px;font-weight:600}
+.job-name{font-family:var(--mono);font-size:14px;font-weight:500;overflow-wrap:anywhere}
+.job-sub{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.job-sub.warn{color:var(--amber)}
+.user{display:flex;align-items:center;gap:10px;min-width:0}
+.avatar{width:28px;height:28px;flex:0 0 auto;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:600}
+.user span:last-child{font-size:13px;overflow-wrap:anywhere}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:6px;border:1px solid var(--line2);color:var(--text2)}
+.chip.gpu-chip{border-color:var(--sky-line);color:var(--sky)}
+.chip.warn{border-color:var(--amber-line);color:var(--amber)}
+.job-time{font-family:var(--mono);font-size:12px;color:var(--text2)}
+.job-el{font-family:var(--mono);font-size:13px}
+.job-el.wait{color:var(--muted)}
+.pill-wrap{display:flex;justify-content:flex-end}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;color:var(--muted)}
+.pill i{width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.wait{background:rgba(255,181,71,0.12);color:var(--amber)}
+.more{display:flex;flex-wrap:wrap;gap:8px;padding:6px var(--pad) 10px calc(var(--pad) + 116px);border-top:1px solid var(--line3)}
+.more button{min-height:32px;padding:0 12px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:var(--sky);font-family:'IBM Plex Sans KR',sans-serif;font-size:12px;cursor:pointer}
+.more button:hover{background:var(--raised)}
+.tr.grp{width:100%;border:0;margin:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.tr.grp.first{border-top:1px solid var(--line2)}
+.tr.grp.next{border-top:1px solid var(--line3)}
+.tr.grp:hover{background:var(--raised)}
+.grp-pill{border:1px solid var(--line2);color:var(--sky)}
+.tr.in-grp,.more.in-grp{background:rgba(255,255,255,0.025)}
+
+/* Phones: each job becomes a small card (server, then name|state, user|elapsed, resources|start) instead of a sideways-scrolling table. */
+@media (max-width:640px){
+  .table-in{min-width:0}
+  .tr.th{display:none}
+  .tr{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"srv srv" "name pill" "user el" "chips time";gap:8px 12px;padding:12px 16px}
+  .tr.next{grid-template-areas:"name pill" "user el" "chips time"}
+  .tr.next .job-srv{display:none}
+  .tr>:nth-child(1){grid-area:srv}
+  .tr>:nth-child(2){grid-area:name}
+  .tr>:nth-child(3){grid-area:user}
+  .tr>:nth-child(4){grid-area:chips}
+  .tr>:nth-child(5){grid-area:time;justify-self:end}
+  .tr>:nth-child(6){grid-area:el;justify-self:end}
+  .tr>:nth-child(7){grid-area:pill;align-self:start}
+  /* Without the header row, label running jobs' start and elapsed (pending ones already say 제출/대기). */
+  .job-time:not(.wait)::before{content:'시작 ';color:var(--muted)}
+  .job-el:not(.wait)::before{content:'경과 ';color:var(--muted);font-weight:400}
+  .more{padding:6px 16px 10px}
+  /* buttons share a line when they fit, else each takes its own full line */
+  .more button{flex:1 1 auto;min-height:36px}
+  /* inside an opened group every row has the same user: drop the avatar line */
+  .tr.in-grp{grid-template-areas:"name pill" "chips el" "chips time"}
+  .tr.in-grp>:nth-child(3){display:none}
+  .tr.in-grp>:nth-child(4){align-self:start}
+  .job-ctl,.tabs{width:100%}
+  .tabs button{flex:1 1 0;justify-content:center;gap:5px;padding:0 6px;white-space:nowrap}
+}
+@media (max-width:640px){.srv-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:340px){.srv-grid{grid-template-columns:minmax(0,1fr)}.card.wide{grid-column:auto}}
+</style>
+<style>
+/* demo only: the banner above the header */
+.demo-banner{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;padding:10px var(--pad);border:1px solid var(--sky-line);border-radius:12px;background:var(--sky-bg);color:var(--sky);font-size:13px;font-weight:600}
+.demo-banner span{color:var(--text2);font-size:12px;font-weight:400}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="demo-banner" role="note">데모: 가짜 데이터<span>실제 서버가 아니라 지어낸 값으로 그린 정적 화면입니다. 시각은 2026-11-03 14:30에 고정되어 있고 갱신되지 않습니다.</span></div>
+<header>
+  <div class="head-left">
+    <h1>연구실 서버 현황</h1>
+    <nav class="seg-nav" aria-label="보기 선택">
+      <a href="index.html" aria-current="page">개요</a>
+      <a href="disk.html">디스크 상태<span class="nav-dot" id="nav-dot" hidden></span></a>
+      <a href="admin.html">관리</a>
+    </nav>
+  </div>
+  <div id="badge" class="badge" role="status">
+    <span class="dot" aria-hidden="true"></span>
+    <span class="lbl">불러오는 중</span>
+    <span class="mono" id="badge-time"></span>
+  </div>
+</header>
+
+<div id="notice" class="notice" hidden></div>
+
+<section class="summary" aria-label="요약" id="summary"></section>
+
+<section class="sec">
+  <div class="sec-head">
+    <h2>서버별 사용 현황</h2>
+    <div class="legend" aria-label="색 범례">
+      <span><span>CPU 사용률</span><span class="mono">0</span><span class="ramp" id="ramp" aria-hidden="true"></span><span class="mono">100%</span></span>
+      <span><span class="amber" aria-hidden="true"></span>메모리, 디스크 80% 이상</span>
+    </div>
+  </div>
+  <div class="srv-grid" id="grid"></div>
+</section>
+
+<section class="sec">
+  <div class="sec-head">
+    <h2>SLURM 작업 현황</h2>
+    <div class="job-ctl">
+      <label class="me-pick"><span>내 계정</span><select id="me" aria-label="내 계정"><option value="">선택 안 함</option></select></label>
+      <div class="tabs" role="group" aria-label="작업 필터" id="tabs"></div>
+    </div>
+  </div>
+  <div class="table">
+    <div class="table-in">
+      <div class="tr th"><span>서버</span><span>작업</span><span>사용자</span><span>자원</span><span>시작</span><span>경과 시간</span><span style="text-align:right">상태</span></div>
+      <div id="rows"></div>
+    </div>
+  </div>
+</section>
+
+</div>
+<script src="demo_data.js"></script>
+<script src="disk_rules.js"></script>
+<script>
+(function () {
+  'use strict';
+  // demo: data from demo_data.js, the clock pinned at the data's time, no polling (make_demo.py)
+  var fetch = window.DEMO.fetch, Date = window.DEMO.Date, setInterval = window.DEMO.noInterval;
+
+  // Refresh: CPU/memory/GPU every 1 s, paused while the tab is hidden. The job
+  // table is re-rendered only when a host's SLURM snapshot changes (the
+  // collectors query SLURM every 10 s).
+  var DATA_URL = 'data/all.json';
+  var POLL_MS = 1000;
+  var STALE_MS = 30000;          // header turns amber after 30 s without new data
+  var IDLE_MIN = 120;            // GPU idle warning after 2 h below 5 %
+  var HOT_C = 85;                // GPU temperature warning
+  var HIGH_PCT = 80;             // memory / disk warning
+  var COLLAPSE_OVER = 8;         // a server with more jobs than this is folded
+  var COLLAPSED_SHOW = 5;        // rows shown while folded
+  // each "더 보기" reveals this many more rows; fewer on phones, where a job is a taller card
+  var MORE_STEP = window.matchMedia && window.matchMedia('(max-width:640px)').matches ? 10 : 20;
+  var EXPANDED_KEY = 'lab-dashboard.expanded';
+  var GROUP_MIN = 5;             // a user with this many jobs on one server gets one summary row
+  var GROUPS_KEY = 'lab-dashboard.groups';
+
+  var AMBER = '#ffb547', RED = '#ff6b6b', SKY = '#7dd3fc';
+  var OFF = '#1c1f26';
+  var TEAL = ['#141c1d', '#13332f', '#165049', '#1b7064'];   // CPU heatmap: <30, <60, <85, >=85
+  // User avatar colors: 12 hues at equal lightness and chroma (OKLCH L 0.82 C 0.10,
+  // text L 0.25), hue 125-350 in steps of ~20; the red, orange and yellow range is
+  // left out because those colors mean warnings here.
+  var USER_COLORS = [
+    ['#b5d088', '#1b2602'], ['#95d7a2', '#062911'], ['#7dd9ba', '#002a1d'], ['#6ed9d2', '#002a28'],
+    ['#6dd6e8', '#002931'], ['#7bd0f9', '#002639'], ['#92c9ff', '#06233d'], ['#abc1ff', '#171f3e'],
+    ['#c3b9ff', '#221c3c'], ['#d8b2f5', '#2a1837'], ['#e9ade3', '#31162f'], ['#f6a9cd', '#361426']
+  ];
+  var ME_KEY = 'lab-dashboard.me';
+  var WAIT_REASON = {
+    Resources: '자원 대기', Priority: '우선순위 대기', JobHeldUser: '사용자 보류', JobHeldAdmin: '관리자 보류',
+    Dependency: '선행 작업 대기', BeginTime: '시작 시각 대기', ReqNodeNotAvail: '노드 사용 불가',
+    QOSMaxGRESPerUser: '사용자별 GPU 한도 도달', QOSMaxCpuPerUserLimit: '사용자별 CPU 한도 도달', AssocGrpGRES: 'GPU 한도 도달'
+  };
+
+  var data = null;
+  var lastGenerated = null;
+  var lastChangeAt = 0;
+  var fetchFailed = false;
+  var filter = 'all';
+  var jobsKey = '';
+  // Extra rows the viewer revealed per host (host -> count); per-browser
+  // convenience, so storage may fail silently. Older saves stored true.
+  var expanded = {};
+  try { expanded = JSON.parse(localStorage.getItem(EXPANDED_KEY) || '{}') || {}; } catch (e) { expanded = {}; }
+  function saveExpanded() {
+    try { localStorage.setItem(EXPANDED_KEY, JSON.stringify(expanded)); } catch (e) { /* ignore */ }
+  }
+  // Summary rows the viewer opened ("host|user" -> extra rows revealed beyond the first MORE_STEP).
+  var groups = {};
+  try { groups = JSON.parse(localStorage.getItem(GROUPS_KEY) || '{}') || {}; } catch (e) { groups = {}; }
+  function saveGroups() {
+    try { localStorage.setItem(GROUPS_KEY, JSON.stringify(groups)); } catch (e) { /* ignore */ }
+  }
+  // The viewer's own account, picked once per browser: those jobs are outlined,
+  // listed first on each server, and get a "내 작업" tab.
+  var me = '';
+  try { me = localStorage.getItem(ME_KEY) || ''; } catch (e) { me = ''; }
+  var meOptionsKey = '';
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function pct(v) { return v == null ? 0 : Math.round(v); }
+
+  function level(v) {
+    var i = v >= 85 ? 3 : (v >= 60 ? 2 : (v >= 30 ? 1 : 0));
+    return { bg: TEAL[i], fg: i ? '#ffffff' : '#eceef2', sub: i >= 2 ? '#d5dae2' : '#9aa1ac',
+             on: i ? '#e6e9ef' : '#6b7380', off: 'rgba(255,255,255,0.1)' };
+  }
+  var DOWN_C = { bg: '#0e1014', fg: '#c1c6cf', sub: '#8b919c', on: '#5d636e', off: OFF };
+
+  // ---------- time helpers ----------
+
+  // Server timezone from the aggregator's ISO time ("...+0900"), so SLURM's
+  // naive timestamps are read in server time whatever the viewer's timezone.
+  function serverTz() {
+    var m = data && /([+-])(\d\d)(\d\d)$/.exec(data.time || '');
+    return m ? m[1] + m[2] + ':' + m[3] : '+09:00';
+  }
+  function parseSlurm(ts) {
+    if (!ts || !/^\d{4}-\d\d-\d\dT/.test(ts)) return null;
+    var t = Date.parse(ts + serverTz());
+    return isNaN(t) ? null : t;
+  }
+  function two(n) { return (n < 10 ? '0' : '') + n; }
+  // Format in server time: shift by the server offset, then read UTC fields.
+  function shortTime(ts) {
+    var t = parseSlurm(ts);
+    if (t == null) return '—';
+    var m = /([+-])(\d\d):(\d\d)/.exec(serverTz());
+    var off = (m[1] === '-' ? -1 : 1) * (parseInt(m[2], 10) * 60 + parseInt(m[3], 10));
+    var d = new Date(t + off * 60000);
+    return two(d.getUTCMonth() + 1) + '/' + two(d.getUTCDate()) + ' ' + two(d.getUTCHours()) + ':' + two(d.getUTCMinutes());
+  }
+  // SLURM "28-02:41:10" -> "28일 02:41:10"; no warning for long runs.
+  function slurmElapsed(s) {
+    if (!s) return '—';
+    var k = s.indexOf('-');
+    return k > 0 ? s.slice(0, k) + '일 ' + s.slice(k + 1) : s;
+  }
+  function duration(sec) {
+    sec = Math.max(0, Math.floor(sec));
+    var d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+    var hms = (d ? two(h) : h) + ':' + two(m) + ':' + two(s);
+    return d ? d + '일 ' + hms : hms;
+  }
+  // "10/28 " when the time is not from today (stopped collection), else nothing.
+  function dayPrefix(epoch) {
+    var d = new Date(epoch * 1000);
+    return d.toDateString() === new Date().toDateString() ? '' : (d.getMonth() + 1) + '/' + d.getDate() + ' ';
+  }
+  // ssh/aggregator error -> short Korean reason; the raw text stays in the tooltip and on /admin
+  function goneReason(err) {
+    if (!err) return '새 데이터 없음';
+    if (/timed out/i.test(err)) return '접속 시간 초과';
+    if (/refused/i.test(err)) return '접속 거부';
+    if (/no route|unreachable|name resolution|could not resolve/i.test(err)) return '네트워크 연결 불가';
+    if (/^no data for/.test(err)) return '새 데이터 없음';
+    if (/closed|reset/i.test(err)) return '연결 종료';
+    return err;
+  }
+  var MAINT_LONG_S = 24 * 3600;   // open-ended 점검 중 mark silent this long turns amber
+  function agoText(sec) {
+    sec = Math.max(0, Math.round(sec));
+    if (sec < 60) return sec + '초 전';
+    var m = Math.floor(sec / 60);
+    if (m < 60) return m + '분 전';
+    var h = Math.floor(m / 60);
+    if (h < 24) return h + '시간 ' + (m % 60) + '분 전';
+    return Math.floor(h / 24) + '일 ' + (h % 24) + '시간 전';
+  }
+  function clock(epoch) {
+    var d = new Date(epoch * 1000);
+    return two(d.getHours()) + ':' + two(d.getMinutes()) + ':' + two(d.getSeconds());
+  }
+
+  // ---------- derived model ----------
+
+  function nodeState(x) {
+    var st = x.status;
+    var node = st && st.slurm && st.slurm.node;
+    var stateStr = (node && node.state) || '';
+    // Marked on /admin (or maintenance.py) before a planned power-off: grey, not amber.
+    if ((!st || x.stale) && x.maintenance) {
+      var mt = x.maintenance;
+      // when it started, and the planned end only when one was set (an open-ended mark has none to show)
+      var hm = function (t) { return dayPrefix(t) + clock(t).slice(0, 5); };
+      var quiet = mt.silent_at || mt.set_at;
+      var quietS = quiet ? Date.now() / 1000 - quiet : 0;
+      // an open-ended mark must not hide a real outage for long (one outage once went 20 h unnoticed)
+      var long = !mt.until && quietS >= MAINT_LONG_S;
+      return { kind: 'drain', maint: true, warn: long, long: long, label: long ? '점검 중 · 24시간 넘음' : '점검 중',
+               reason: mt.note || '사유 없음', sinceLabel: '점검 시작', since: mt.set_at ? hm(mt.set_at) : '—',
+               silent: quiet ? agoText(quietS).replace(/ 전$/, '') : null,
+               until: mt.until ? hm(mt.until) : null };
+    }
+    if (!st || x.stale) {
+      return { kind: 'gone', label: '응답 없음',
+               reason: goneReason(x.error), detail: x.error || '최근 30초 동안 새 데이터가 없습니다.',
+               since: x.age == null ? '—' : agoText(x.age) };
+    }
+    if (/DRAIN/.test(stateStr)) {
+      // SLURM DRAIN: the server is up and running jobs keep going; only new jobs stay out
+      return { kind: 'drain', label: '신규 작업 중지', reason: node.reason || '사유 없음', sinceLabel: '중지 시각',
+               since: shortTime(node.reason_time) };
+    }
+    // the server answers but SLURM does not use it: amber (after a reboot slurmd may not start)
+    if (!st.slurm.ok || !node) return { kind: 'up', warn: true, label: 'SLURM 응답 없음' };
+    if (/DOWN/.test(stateStr)) return { kind: 'up', warn: true, label: 'SLURM 제외 (' + stateStr + ')' };
+    return { kind: 'up', label: '코어 ' + node.cpu_alloc + '/' + node.cpu_total + ' 할당' };
+  }
+
+  function gpuInfo(g) {
+    var held = g.allocated || (g.procs && g.procs.length > 0);
+    var idleH = held && g.idle_min >= IDLE_MIN ? Math.floor(g.idle_min / 60) : 0;
+    var hot = g.temp != null && g.temp >= HOT_C;
+    return { g: g, held: held, idleH: idleH, hot: hot, outside: !!g.outside_slurm,
+             // available = not allocated by SLURM and no process on it
+             free: !held };
+  }
+
+  function servers() { return (data && data.servers) || []; }
+
+  function jobRunning(j) { return j.state === 'RUNNING' || j.state === 'COMPLETING' || j.state === 'CONFIGURING'; }
+  function jobPending(j) { return j.state === 'PENDING'; }
+
+  // ---------- render: summary ----------
+
+  function segs(list) {
+    return '<div class="segs" aria-hidden="true">' + list.map(function (s) {
+      return '<i style="background:' + s.c + ';' + (s.b ? 'border:' + s.b : '') + '"></i>';
+    }).join('') + '</div>';
+  }
+  function scaled(items, max) {
+    // Many jobs: draw a fixed number of segments in proportion instead of one each.
+    if (items.length <= max) return items;
+    var out = [], counts = {};
+    items.forEach(function (s) { counts[s.c] = (counts[s.c] || 0) + 1; });
+    Object.keys(counts).forEach(function (c) {
+      var n = Math.max(1, Math.round(counts[c] / items.length * max));
+      for (var i = 0; i < n; i++) out.push({ c: c });
+    });
+    return out.slice(0, max);
+  }
+  function tile(label, value, unit, note, noteWarn, valueWarn, foot) {
+    return '<div class="tile"><span class="tile-label">' + label + '</span>' +
+      '<div class="stack"><div class="tile-val"><b' + (valueWarn ? ' style="color:' + AMBER + '"' : '') + '>' + value + '</b><span>' + unit + '</span></div>' +
+      '<span class="tile-note"' + (noteWarn ? ' style="color:' + AMBER + '"' : '') + '>' + note + '</span></div>' +
+      '<div class="tile-foot">' + foot + '</div></div>';
+  }
+
+  function renderSummary() {
+    var gpus = [], jobs = [], nodes = [], disksWarn = [];
+    servers().forEach(function (x) {
+      var st = x.status, ns = nodeState(x);
+      nodes.push({ host: x.host, ns: ns, x: x });
+      if (!st || x.stale) return;
+      (st.gpus || []).forEach(function (g) { gpus.push(gpuInfo(g)); });
+      ((st.slurm && st.slurm.jobs) || []).forEach(function (j) { jobs.push(j); });
+      (st.disks || []).forEach(function (v) {
+        if (v.pct >= HIGH_PCT) disksWarn.push({ where: x.host + ' ' + v.mount, pct: v.pct });
+      });
+    });
+
+    var free = gpus.filter(function (i) { return i.free; }).length;
+    var idle = gpus.filter(function (i) { return i.idleH; }).length;
+    var outside = gpus.filter(function (i) { return i.outside; }).length;
+    var avg = gpus.length ? Math.round(gpus.reduce(function (a, i) { return a + (i.g.util || 0); }, 0) / gpus.length) : 0;
+    var gNote = idle ? '유휴 ' + idle + '개' : (outside ? 'SLURM 외 사용 ' + outside + '개' : '평균 사용률 ' + avg + '%');
+    var gSegs = gpus.map(function (i) {
+      var u = i.g.util || 0;
+      return { c: (i.idleH || i.outside) ? AMBER : (u > 0 ? (u >= 85 ? SKY : (u >= 60 ? '#5fa8d3' : '#3b8fbf')) : (i.held ? '#2b5f7f' : OFF)) };
+    });
+
+    var run = jobs.filter(jobRunning).length;
+    var wait = jobs.filter(jobPending).length;
+    var jSegs = scaled(jobs.filter(function (j) { return jobRunning(j) || jobPending(j); })
+      .map(function (j) { return { c: jobPending(j) ? AMBER : SKY }; }), 40);
+
+    var up = nodes.filter(function (n) { return n.ns.kind === 'up'; }).length;
+    var maints = nodes.filter(function (n) { return n.ns.maint; }).map(function (n) { return n.host; });
+    var drains = nodes.filter(function (n) { return n.ns.kind === 'drain' && !n.ns.maint; }).map(function (n) { return n.host; });
+    var gone = nodes.filter(function (n) { return n.ns.kind === 'gone'; }).map(function (n) { return n.host; });
+    var warned = nodes.filter(function (n) { return n.ns.kind === 'up' && (n.ns.warn || (n.x.mount_problems || []).length); }).map(function (n) { return n.host; });
+    var sNote = [];
+    if (maints.length) sNote.push('점검 중 ' + maints.join(', '));
+    if (drains.length) sNote.push('신규 작업 중지 ' + drains.join(', '));
+    if (gone.length) sNote.push('응답 없음 ' + gone.join(', '));
+    if (warned.length) sNote.push('확인 필요 ' + warned.join(', '));
+    var nSegs = nodes.map(function (n) {
+      if (n.ns.kind === 'up') return { c: warned.indexOf(n.host) >= 0 ? AMBER : SKY };
+      return n.ns.kind === 'gone' || n.ns.long ? { c: 'transparent', b: '1px dashed ' + AMBER } : { c: 'transparent', b: '1px dashed #8b919c' };
+    });
+
+    disksWarn.sort(function (a, b) { return b.pct - a.pct; });
+    var dList = '<div class="warn-list">' + disksWarn.slice(0, 2).map(function (d) {
+      return '<div><span>' + esc(d.where) + '</span><span>' + d.pct + '%</span></div>';
+    }).join('') + '</div>';
+
+    $('summary').innerHTML =
+      tile('사용 가능 GPU', free, '/' + gpus.length, gNote, idle || outside, false, gpus.length ? segs(gSegs) : '') +
+      tile('실행 중인 작업', run, '건', '대기 ' + wait + '건', wait > 0, false, jSegs.length ? segs(jSegs) : '') +
+      tile('정상 가동 서버', up, '/' + nodes.length, sNote.length ? esc(sNote.join(', ')) : '모두 정상', gone.length + warned.length > 0, false, segs(nSegs)) +
+      tile('디스크 용량', disksWarn.length, '개 볼륨', '80% 이상', false, disksWarn.length > 0, disksWarn.length ? dList : '');
+  }
+
+  // ---------- render: server cards ----------
+
+  function bar(label, value, c, h) {
+    var p = pct(value), high = p >= HIGH_PCT;
+    return { p: p, fill: high ? AMBER : c.on, text: high ? AMBER : c.fg, label: label, h: h };
+  }
+  function memHtml(st, c) {
+    var b = bar('메모리', st.mem && st.mem.pct, c);
+    return '<div class="mem-row"><div class="mem-head"><span style="color:' + c.sub + '">메모리</span><b style="color:' + b.text + '">' + b.p + '%</b></div>' +
+      '<div class="track" aria-hidden="true" style="height:6px;background:' + c.off + '"><div style="width:' + b.p + '%;background:' + b.fill + '"></div></div></div>';
+  }
+  function disksHtml(st, c) {
+    var rows = (st.disks || []).map(function (v) {
+      var b = bar(v.mount, v.pct, c);
+      return '<div class="disk"><span style="color:' + c.sub + '" title="' + esc(v.mount) + '">' + esc(v.mount) + '</span>' +
+        '<div class="track" aria-hidden="true" style="height:4px;border-radius:2px;background:' + c.off + '"><div style="width:' + b.p + '%;background:' + b.fill + '"></div></div>' +
+        '<span style="color:' + b.text + '">' + b.p + '%</span></div>';
+    }).join('');
+    return '<div class="disks"><span class="small" style="color:' + c.sub + '">디스크</span>' + rows + '</div>';
+  }
+  function gpuHtml(i) {
+    var g = i.g, c = level(g.util || 0);
+    var notes = [];
+    if (i.idleH) notes.push('유휴 ' + i.idleH + '시간');
+    if (i.outside) notes.push('SLURM 외 사용');
+    var warn = i.idleH || i.outside || i.hot;
+    return '<div class="gpu' + (warn ? ' warn' : '') + '" style="background:' + c.bg + ';color:' + c.fg + '">' +
+      '<div class="gpu-top"><span style="color:' + c.sub + '">GPU' + g.index + '</span><span style="color:' + (i.hot ? AMBER : c.sub) + '">' +
+      (g.temp == null ? '—' : Math.round(g.temp)) + '°C</span></div>' +
+      '<span class="gpu-util">' + pct(g.util) + '%</span>' +
+      (notes.length ? '<span class="gpu-note">' + notes.join(', ') + '</span>' : '') + '</div>';
+  }
+
+  function cardHtml(x) {
+    var st = x.status, ns = nodeState(x);
+    var flags = (x.mount_problems || []).map(function (m) {
+      return '<span class="flag danger">' + esc(m.mount + (m.why === 'missing' ? ' 마운트 안 됨' : m.why === 'hung' ? ' 응답 지연' : ' 읽기 전용')) + '</span>';
+    });
+    var head = function (c) {
+      return '<div class="stack"><span class="name">' + esc(x.host) + '</span>' +
+        (ns.warn ? '' : '<span class="small" style="color:' + c.sub + '">' + esc(ns.label) + '</span>') +
+        (ns.warn || flags.length ? '<div class="flags">' + (ns.warn ? '<span class="flag">' + esc(ns.label) + '</span>' : '') + flags.join('') + '</div>' : '') + '</div>';
+    };
+    if (ns.kind !== 'up') {
+      var c0 = DOWN_C;
+      var border = ns.kind === 'gone' || ns.long ? 'border-color:' + AMBER : '';
+      return '<div class="card down" style="' + border + '"' + (ns.detail ? ' title="' + esc(ns.detail) + '"' : '') + '>' + head(c0) +
+        '<div class="down-info"><div class="stack"><span class="small" style="color:' + c0.sub + '">사유</span><span>' + esc(ns.reason) + '</span></div>' +
+        '<div class="stack"><span class="small" style="color:' + c0.sub + '">' + (ns.sinceLabel || '마지막 수신') + '</span><span class="mono">' + esc(ns.since) + '</span></div>' +
+        (ns.silent ? '<div class="stack"><span class="small" style="color:' + c0.sub + '">무응답</span><span class="mono"' + (ns.long ? ' style="color:' + AMBER + '"' : '') + '>' + esc(ns.silent) + '</span></div>' : '') +
+        (ns.until ? '<div class="stack"><span class="small" style="color:' + c0.sub + '">종료 예정</span><span class="mono">' + esc(ns.until) + '</span></div>' : '') + '</div></div>';
+    }
+    var cpu = st.cpu ? st.cpu.pct : 0;
+    var c = level(cpu);
+    var metrics = '<div class="stack"><span class="small" style="color:' + c.sub + '">CPU</span><span class="cpu">' + pct(cpu) + '%</span></div>' +
+      '<div class="bars">' + memHtml(st, c) + disksHtml(st, c) + '</div>';
+    var gpus = (st.gpus || []).map(gpuInfo);
+    if (!gpus.length) {
+      return '<div class="card" style="background:' + c.bg + ';color:' + c.fg + '">' + head(c) + metrics + '</div>';
+    }
+    var alloc = gpus.filter(function (i) { return i.g.allocated; }).length;
+    return '<div class="card wide" style="background:' + c.bg + ';color:' + c.fg + '">' +
+      '<div class="col">' + head(c) + metrics + '</div>' +
+      '<div class="col-gpu"><div class="gpu-head" style="color:' + c.sub + '"><span>GPU</span><span>' + alloc + '/' + gpus.length + ' 할당</span></div>' +
+      '<div class="gpu-grid">' + gpus.map(gpuHtml).join('') + '</div></div></div>';
+  }
+
+  function renderGrid() {
+    $('grid').innerHTML = servers().map(cardHtml).join('');
+  }
+
+  // ---------- render: jobs ----------
+
+  function userHash(name) {
+    var h = 0;
+    for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return h;
+  }
+  // Each user keeps the color their name hashes to, unless someone else on the
+  // page already has it: then the next free one (stepping by 5, which visits all
+  // 12). Users are placed in a fixed order, so the result only changes when the
+  // set of users with jobs changes.
+  var userSlots = {};
+  function assignUserColors(names) {
+    var n = USER_COLORS.length, used = {}, slots = {};
+    names.slice().sort(function (a, b) {
+      return (userHash(a) % n - userHash(b) % n) || (a < b ? -1 : a > b ? 1 : 0);
+    }).forEach(function (u) {
+      var k = userHash(u) % n, tries = 0;
+      while (used[k] && tries++ < n) k = (k + 5) % n;
+      used[k] = true;
+      slots[u] = k;
+    });
+    userSlots = slots;
+  }
+  function userColor(name) {
+    var k = userSlots[name];
+    return USER_COLORS[k === undefined ? userHash(name) % USER_COLORS.length : k];
+  }
+
+  function rowPos(isFirst, isTop) { return isTop ? 'top' : (isFirst ? 'first' : 'next'); }
+
+  // One row standing for all of a user's jobs on a server; a button that lists them.
+  function groupRow(g, x, gpuByIdx, isFirst, isTop, open) {
+    var run = 0, wait = 0, cpus = 0, gpus = 0, gReq = 0, idle = false;
+    g.jobs.forEach(function (j) {
+      if (jobPending(j)) { wait++; if (j.gpu_req) gReq += j.gpu_req.count || 0; return; }
+      if (!jobRunning(j)) return;
+      run++;
+      if (j.gpu_idx && j.gpu_idx.length) {
+        gpus += j.gpu_idx.length;
+        j.gpu_idx.forEach(function (k) { var i = gpuByIdx[k]; if (i && i.idleH) idle = true; });
+      } else cpus += j.cpus || 0;
+    });
+    var chips = [];
+    if (gpus) chips.push({ label: 'GPU ' + gpus + '개', cls: idle ? 'warn' : 'gpu-chip' });
+    if (cpus) chips.push({ label: 'CPU ' + cpus, cls: '' });
+    if (gReq) chips.push({ label: 'GPU ' + gReq + '개 대기', cls: 'warn' });
+    var other = g.jobs.length - run - wait;
+    var sub = ['실행 ' + run, '대기 ' + wait].concat(other ? ['기타 ' + other] : []).join(' · ');
+    var uc = userColor(g.user);
+    return '<button type="button" class="tr grp ' + rowPos(isFirst, isTop) + '" data-grp="' + esc(x.host + '|' + g.user) + '" data-act="toggle" aria-expanded="' + open + '">' +
+      '<span class="job-srv">' + (isFirst ? esc(x.host) : '') + '</span>' +
+      '<span class="stack" style="min-width:0"><span class="job-name">작업 ' + g.jobs.length + '건</span><span class="job-sub' + (wait ? ' warn' : '') + '">' + esc(sub) + '</span></span>' +
+      '<span class="user"><span class="avatar" aria-hidden="true" style="background:' + uc[0] + ';color:' + uc[1] + '">' + esc(g.user.charAt(0).toUpperCase()) + '</span><span>' + esc(g.user) + '</span></span>' +
+      '<span class="chips">' + chips.map(function (c) { return '<span class="chip ' + c.cls + '">' + esc(c.label) + '</span>'; }).join('') + '</span>' +
+      '<span class="job-time wait"></span><span class="job-el wait"></span>' +
+      '<span class="pill-wrap"><span class="pill grp-pill">' + (open ? '접기 ▴' : '펼치기 ▾') + '</span></span></button>';
+  }
+
+  function jobRow(j, x, gpuByIdx, nowMs, isFirst, isTop, inGroup) {
+    var pending = jobPending(j), running = jobRunning(j);
+    var idleH = 0;
+    (j.gpu_idx || []).forEach(function (k) { var i = gpuByIdx[k]; if (i && i.idleH > idleH) idleH = i.idleH; });
+
+    var chips = [];
+    if (running && j.gpu_idx && j.gpu_idx.length) {
+      j.gpu_idx.forEach(function (k) { chips.push({ label: 'GPU ' + k, cls: idleH ? 'warn' : 'gpu-chip' }); });
+    } else if (pending && j.gpu_req) {
+      chips.push({ label: (j.gpu_req.model || 'GPU') + ' × ' + j.gpu_req.count, cls: 'warn' });
+    } else {
+      chips.push({ label: 'CPU ' + (j.cpus == null ? '?' : j.cpus), cls: pending ? 'warn' : '' });
+    }
+
+    var sub = '#' + j.id, subWarn = false;
+    if (pending) { sub += ' ' + (WAIT_REASON[j.reason] || j.reason || '대기'); subWarn = true; }
+    else if (idleH) { sub += ' GPU 유휴 ' + idleH + '시간'; subWarn = true; }
+
+    var start, elapsed;
+    if (pending) {
+      var sub_t = parseSlurm(j.submit);
+      start = '제출 ' + shortTime(j.submit);
+      elapsed = '대기 ' + (sub_t == null ? '—' : duration((nowMs - sub_t) / 1000));
+    } else {
+      start = shortTime(j.start);
+      elapsed = slurmElapsed(j.elapsed);
+    }
+    var stateLabel = pending ? '대기' : (running ? '실행 중' : ({ SUSPENDED: '일시 중지' }[j.state] || j.state));
+    var uc = userColor(j.user || '?');
+    return '<div class="tr ' + rowPos(isFirst, isTop) + (inGroup ? ' in-grp' : '') + (me && j.user === me ? ' mine' : '') + '">' +
+      '<span class="job-srv">' + (isFirst ? esc(x.host) : '') + '</span>' +
+      '<div class="stack" style="min-width:0"><span class="job-name">' + esc(j.name) + '</span><span class="job-sub' + (subWarn ? ' warn' : '') + '">' + esc(sub) + '</span></div>' +
+      '<div class="user"><span class="avatar" aria-hidden="true" style="background:' + uc[0] + ';color:' + uc[1] + '">' + esc((j.user || '?').charAt(0).toUpperCase()) + '</span><span>' + esc(j.user) + '</span></div>' +
+      '<div class="chips">' + chips.map(function (c) { return '<span class="chip ' + c.cls + '">' + esc(c.label) + '</span>'; }).join('') + '</div>' +
+      '<span class="job-time' + (pending ? ' wait' : '') + '">' + esc(start) + '</span>' +
+      '<span class="job-el' + (pending ? ' wait' : '') + '">' + esc(elapsed) + '</span>' +
+      '<div class="pill-wrap"><span class="pill' + (pending ? ' wait' : '') + '"><i aria-hidden="true"></i>' + esc(stateLabel) + '</span></div></div>';
+  }
+
+  function renderJobs(force) {
+    // Rebuild only when a SLURM snapshot changed, the filter changed, or a
+    // pending job's wait time needs ticking (every render of the 2 s loop is
+    // cheap enough for the tabs, so only the rows are guarded).
+    var key = filter + '|' + me + '|' + servers().map(function (x) {
+      return x.host + ':' + (x.status && x.status.slurm ? x.status.slurm.collected : '-');
+    }).join(',');
+    var all = [];
+    servers().forEach(function (x) {
+      if (x.status && !x.stale) ((x.status.slurm && x.status.slurm.jobs) || []).forEach(function (j) { all.push(j); });
+    });
+    var users = [];
+    all.forEach(function (j) { if (j.user && users.indexOf(j.user) < 0) users.push(j.user); });
+    users.sort();
+    renderMeOptions(users);
+    if (!me && filter === 'mine') filter = 'all';
+    var mine = function (j) { return j.user === me; };
+    var counts = { all: all.length, run: all.filter(jobRunning).length, wait: all.filter(jobPending).length,
+                   mine: me ? all.filter(mine).length : 0 };
+    var tabs = [['all', '전체'], ['run', '실행 중'], ['wait', '대기']];
+    if (me) tabs.push(['mine', '내 작업']);
+    $('tabs').innerHTML = tabs.map(function (t) {
+      return '<button type="button" data-filter="' + t[0] + '" aria-pressed="' + (filter === t[0]) + '">' + t[1] + '<span>' + counts[t[0]] + '</span></button>';
+    }).join('');
+    if (!force && key === jobsKey) return;
+    jobsKey = key;
+    // Colors are spread over everyone with jobs (not just the current tab), so switching tabs keeps them.
+    assignUserColors(users);
+
+    var nowMs = (data ? data.generated : Date.now() / 1000) * 1000;
+    var html = [];
+    servers().forEach(function (x) {
+      if (!x.status || x.stale) return;
+      var gpuByIdx = {};
+      (x.status.gpus || []).forEach(function (g) { gpuByIdx[g.index] = gpuInfo(g); });
+      var js = ((x.status.slurm && x.status.slurm.jobs) || []).filter(function (j) {
+        return filter === 'all' || (filter === 'run' ? jobRunning(j) : filter === 'wait' ? jobPending(j) : mine(j));
+      });
+      // the viewer's own jobs first, then running before pending; each by job id
+      js.sort(function (a, b) {
+        return (me ? mine(b) - mine(a) : 0) || (jobPending(a) - jobPending(b)) || (parseInt(a.id, 10) - parseInt(b.id, 10));
+      });
+      // A user with GROUP_MIN or more jobs here becomes one summary row, placed
+      // where their first job would be; the viewer's own jobs are never folded.
+      var byUser = {};
+      js.forEach(function (j) { var u = j.user || '?'; (byUser[u] = byUser[u] || []).push(j); });
+      var entries = [], placed = {};
+      js.forEach(function (j) {
+        var u = j.user || '?';
+        if (u === me || byUser[u].length < GROUP_MIN) entries.push({ job: j });
+        else if (!placed[u]) { placed[u] = true; entries.push({ user: u, jobs: byUser[u] }); }
+      });
+      // Long lists open MORE_STEP rows at a time, so one click never adds 60 rows at once.
+      var foldable = entries.length > COLLAPSE_OVER;
+      var extra = expanded[x.host] === true ? MORE_STEP : (expanded[x.host] || 0);
+      var shown = foldable ? Math.min(entries.length, COLLAPSED_SHOW + extra) : entries.length;
+      entries.slice(0, shown).forEach(function (e, i) {
+        if (e.job) { html.push(jobRow(e.job, x, gpuByIdx, nowMs, i === 0, html.length === 0)); return; }
+        var gk = x.host + '|' + e.user, open = groups.hasOwnProperty(gk);
+        html.push(groupRow(e, x, gpuByIdx, i === 0, html.length === 0, open));
+        if (!open) return;
+        var gShown = Math.min(e.jobs.length, MORE_STEP + (groups[gk] || 0));
+        e.jobs.slice(0, gShown).forEach(function (j) { html.push(jobRow(j, x, gpuByIdx, nowMs, false, false, true)); });
+        var gRest = e.jobs.length - gShown, g = esc(gk), u = esc(e.user), gb = [];
+        if (gRest > 0) gb.push('<button type="button" data-grp="' + g + '" data-act="more">' + u + ' ' +
+          (gRest > MORE_STEP ? MORE_STEP + '건 더 보기 (남은 ' + gRest + '건)' : '나머지 ' + gRest + '건 더 보기') + '</button>');
+        gb.push('<button type="button" data-grp="' + g + '" data-act="less">' + u + ' 작업 접기</button>');
+        html.push('<div class="more in-grp">' + gb.join('') + '</div>');
+      });
+      if (foldable) {
+        var rest = entries.length - shown, h = esc(x.host), btns = [];
+        if (rest > 0) btns.push('<button type="button" data-host="' + h + '" data-act="more">' + h + ' ' +
+          (rest > MORE_STEP ? MORE_STEP + '건 더 보기 (남은 ' + rest + '건)' : '나머지 ' + rest + '건 더 보기') + '</button>');
+        if (shown > COLLAPSED_SHOW) btns.push('<button type="button" data-host="' + h + '" data-act="less">' + h + ' 작업 접기</button>');
+        html.push('<div class="more" data-more="' + h + '">' + btns.join('') + '</div>');
+      }
+    });
+    $('rows').innerHTML = html.length ? html.join('') :
+      '<div class="empty">' + (filter === 'wait' ? '대기 중인 작업이 없습니다.' : filter === 'run' ? '실행 중인 작업이 없습니다.' :
+        filter === 'mine' ? esc(me) + ' 계정의 작업이 없습니다.' : '실행 중이거나 대기 중인 작업이 없습니다.') + '</div>';
+  }
+
+  // Account picker: everyone with jobs right now, plus the saved account even if it has none.
+  // Rebuilt only when that list changes, and never while the viewer has it open.
+  function renderMeOptions(users) {
+    var sel = $('me');
+    var list = users.slice();
+    if (me && list.indexOf(me) < 0) { list.push(me); list.sort(); }
+    var k = me + '|' + list.join(',');
+    if (k === meOptionsKey || document.activeElement === sel) return;
+    meOptionsKey = k;
+    sel.innerHTML = '<option value="">선택 안 함</option>' + list.map(function (u) {
+      return '<option value="' + esc(u) + '"' + (u === me ? ' selected' : '') + '>' + esc(u) + '</option>';
+    }).join('');
+  }
+
+  // ---------- header badge ----------
+
+  function renderBadge() {
+    var stale = !data || Date.now() - lastChangeAt > STALE_MS;
+    var el = $('badge');
+    el.className = 'badge' + (stale && data ? ' stale' : '');
+    el.querySelector('.lbl').textContent = !data ? (fetchFailed ? '데이터를 불러오지 못했습니다' : '불러오는 중') : (stale ? '갱신 지연' : '마지막 갱신');
+    $('badge-time').textContent = data ? dayPrefix(data.generated) + clock(data.generated) : '';
+  }
+
+  function render() {
+    renderSummary();
+    renderGrid();
+    renderJobs(false);
+  }
+
+  // ---------- loop ----------
+
+  var inFlight = false;
+  function tick() {
+    // A hidden tab (phone locked, another app or tab in front) sends nothing.
+    if (document.hidden || inFlight) return;
+    inFlight = true;
+    fetch(DATA_URL, { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (d) {
+      fetchFailed = false;
+      if (d.generated !== lastGenerated) {
+        lastGenerated = d.generated;
+        lastChangeAt = Date.now();
+        data = d;
+        render();
+      }
+      $('notice').hidden = true;
+    }).catch(function () {
+      fetchFailed = true;
+      if (!data) {
+        $('notice').hidden = false;
+        $('notice').textContent = '서버 상태 데이터를 불러오지 못했습니다. 잠시 후 다시 시도합니다.';
+      }
+    }).then(function () { inFlight = false; renderBadge(); });
+  }
+
+  $('ramp').style.background = 'linear-gradient(90deg, ' + TEAL[0] + ' 0 30%, ' + TEAL[1] + ' 30% 60%, ' + TEAL[2] + ' 60% 85%, ' + TEAL[3] + ' 85% 100%)';
+  $('tabs').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-filter]');
+    if (!b) return;
+    filter = b.getAttribute('data-filter');
+    renderJobs(true);
+  });
+  $('me').addEventListener('change', function () {
+    me = this.value;
+    try { if (me) localStorage.setItem(ME_KEY, me); else localStorage.removeItem(ME_KEY); } catch (e) { /* ignore */ }
+    if (!me && filter === 'mine') filter = 'all';
+    meOptionsKey = '';
+    this.blur();
+    renderJobs(true);
+  });
+  $('rows').addEventListener('click', function (e) {
+    var gb = e.target.closest('button[data-grp]');
+    if (gb) {
+      var gk = gb.getAttribute('data-grp'), act = gb.getAttribute('data-act');
+      if (act === 'more') groups[gk] = (groups[gk] || 0) + MORE_STEP;
+      else if (act === 'toggle' && !groups.hasOwnProperty(gk)) groups[gk] = 0;
+      else delete groups[gk];
+      saveGroups();
+      renderJobs(true);
+      // After folding from the bottom of a long list, bring the summary row back on screen.
+      if (act !== 'more') {
+        var row = null;
+        document.querySelectorAll('button.grp').forEach(function (r) { if (r.getAttribute('data-grp') === gk) row = r; });
+        if (row && row.getBoundingClientRect().top < 0) row.scrollIntoView({ block: 'center' });
+      }
+      return;
+    }
+    var b = e.target.closest('button[data-host]');
+    if (!b) return;
+    var host = b.getAttribute('data-host');
+    if (b.getAttribute('data-act') === 'more') {
+      expanded[host] = (expanded[host] === true ? MORE_STEP : (expanded[host] || 0)) + MORE_STEP;
+    } else {
+      delete expanded[host];
+    }
+    saveExpanded();
+    renderJobs(true);
+    // After folding, bring that server's buttons back on screen instead of leaving the viewer far below.
+    if (b.getAttribute('data-act') === 'less') {
+      var bar = document.querySelector('.more[data-more="' + host.replace(/"/g, '') + '"]');
+      if (bar && bar.getBoundingClientRect().top < 0) bar.scrollIntoView({ block: 'center' });
+    }
+  });
+  // Disk tab warning dot: disk data changes every 10 min, so check once a minute.
+  function diskTick() {
+    if (document.hidden) return;
+    fetch('data/disks.json', { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (d) {
+      var lvl = window.DiskRules.worst(d.servers);
+      var dot = $('nav-dot');
+      dot.hidden = lvl === 'ok';
+      dot.style.background = lvl === 'danger' ? RED : AMBER;
+      dot.setAttribute('aria-label', lvl === 'danger' ? '위험 있음' : '주의 있음');
+    }).catch(function () { /* keep the last state */ });
+  }
+
+  tick();
+  setInterval(tick, POLL_MS);
+  diskTick();
+  setInterval(diskTick, 60000);
+  // Coming back to the tab: refresh at once instead of waiting for the next tick.
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) { tick(); diskTick(); }
+  });
+})();
+</script>
+</body>
+</html>

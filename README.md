@@ -24,5 +24,5 @@
 
 정상·주의·위험이 고루 보이도록 꾸몄습니다: 응답 없는 서버(server-04), 점검 중(server-05),
 신규 작업 중지(server-06), 마운트 빠짐(server-07), 보류 섹터가 있는 디스크와 제거 대상 디스크(server-03),
-재구축 중인 RAID(server-06), 스왑·OOM·GPU Xid(server-03), root 접속(server-07) 등.
+재구축 중인 RAID(server-06), 스왑·OOM·GPU Xid(server-03), 고온 디스크 6개와 root 접속(server-07) 등.
 관리 화면의 '점검 중' 스위치는 켜고 끌 수 있지만 브라우저 메모리에만 반영되고 새로 고치면 돌아갑니다.

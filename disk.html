@@ -406,7 +406,7 @@
       '<span>' + slots + '슬롯 중 ' + items.length + '개 장착</span>' +
       (temps ? '<span class="encl-temp" title="인클로저 센서 온도">' + temps + '</span>' : '') +
       '</div>' +
-      '<div class="bays" style="grid-template-columns:repeat(' + cols + ',minmax(var(--bay-min),1fr))">' + cells.join('') + '</div></div>';
+      '<div class="bays" data-cols="' + cols + '" style="grid-template-columns:repeat(' + cols + ',minmax(var(--bay-min),1fr))">' + cells.join('') + '</div></div>';
   }
 
   function factsHtml(m, i) {
@@ -473,7 +473,7 @@
     if (m.missing) {
       return '<div class="card"><div class="card-head"><div class="l"><span class="name">' + esc(m.host) + '</span>' +
         (m.maint ? '<span class="sub maint">점검 중 · ' + esc(maintUntil(m.maint)) + '</span>' : '') + '</div></div>' +
-        '<span class="sub">디스크 정보를 아직 수신하지 못했습니다.</span></div>';
+        '<span class="sub">디스크 정보를 받지 못했습니다.</span></div>';
     }
     var d = m.d;
     // each count in its own color, so caution and to-remove do not read as danger
@@ -570,7 +570,20 @@
       }).join('') + '</div></div>';
     }
     $('cards').innerHTML = html;
+    snapBays();
   }
+  // Whole-pixel slot widths: 1fr columns land on half pixels (a 12-slot, 4-column grid is 290.5 px
+  // wide at 1280), which blurs the 1 px slot borders. Spare pixels stay at the right end.
+  function snapBays() {
+    document.querySelectorAll('.bays[data-cols]').forEach(function (g) {
+      var n = +g.dataset.cols, cs = getComputedStyle(g);
+      g.style.gridTemplateColumns = 'repeat(' + n + ',minmax(var(--bay-min),1fr))';
+      var inner = g.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      var w = Math.floor((inner - parseFloat(cs.columnGap) * (n - 1)) / n);
+      if (w >= (parseFloat(cs.getPropertyValue('--bay-min')) || 0)) g.style.gridTemplateColumns = 'repeat(' + n + ',' + w + 'px)';
+    });
+  }
+  window.addEventListener('resize', snapBays);
 
   // ---------- header ----------
 
@@ -604,7 +617,7 @@
       }
     });
     var hosts = function (l) { return l.join(', ') + (l.length > 1 ? ' (' + l.length + '대)' : ''); };
-    if (missing.length) notes.push(hosts(missing) + ': 디스크 정보를 아직 수신하지 못했습니다.');
+    if (missing.length) notes.push(hosts(missing) + ': 디스크 정보를 받지 못했습니다.');
     times.forEach(function (t) { notes.push(hosts(byTime[t]) + ': 마지막 수집 ' + t + ' 이후 새 정보가 없습니다.'); });
     $('notice').hidden = !notes.length;
     $('notice').innerHTML = notes.map(function (n) { return '<span>' + esc(n) + '</span>'; }).join('');

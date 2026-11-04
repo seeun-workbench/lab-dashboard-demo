@@ -23,10 +23,11 @@
 .legend .amber{width:14px;height:4px;border-radius:2px;background:var(--amber)}
 
 .srv-grid{display:grid;grid-auto-flow:dense;gap:10px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
-.card{min-height:252px;border-radius:16px;padding:16px var(--pad);display:flex;flex-direction:column;justify-content:space-between;gap:14px;border:1px solid transparent}
+/* rows start at the top so CPU/메모리/디스크 line up across cards of one row; spare height stays at the bottom */
+.card{min-height:252px;border-radius:16px;padding:16px var(--pad);display:flex;flex-direction:column;justify-content:flex-start;gap:14px;border:1px solid transparent}
 .card.wide{grid-column:span 2;flex-direction:row;flex-wrap:wrap;gap:16px 20px}
 .card.down{background:var(--panel);color:var(--text2);border:1px dashed var(--dim);justify-content:flex-start}
-.col{flex:1 1 180px;min-width:0;display:flex;flex-direction:column;justify-content:space-between;gap:14px}
+.col{flex:1 1 180px;min-width:0;display:flex;flex-direction:column;justify-content:flex-start;gap:14px}
 .col-gpu{flex:1 1 180px;min-width:0;display:flex;flex-direction:column;gap:8px}
 .small{font-size:11px}
 /* a problem on a server that still answers: a pill readable on every card colour */

@@ -22,13 +22,13 @@
 
 /* servers with nothing to check: one panel under the others, a row per server */
 .ok-list{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
-.ok-row{width:100%;min-height:48px;padding:8px var(--pad);display:flex;align-items:center;gap:10px;background:none;border:0;border-top:1px solid var(--line);font-family:'IBM Plex Sans KR',sans-serif;font-size:12px;color:var(--muted);cursor:pointer;text-align:left}
+.ok-row{width:100%;min-height:48px;padding:8px var(--pad);display:flex;align-items:center;gap:10px;background:none;border:0;border-top:1px solid var(--line);font-size:12px;color:var(--muted);cursor:pointer;text-align:left}
 .ok-row:hover{background-image:var(--hover)}
 .ok-row .dot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--blue)}
 .ok-row .name{flex:none;min-width:72px;font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text)}
 .ok-row .info{flex:1;min-width:0}
 .ok-row .maint{color:var(--text2)}
-.ok-row::after{content:'';order:-1;flex:none;width:7px;height:7px;margin-right:3px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
+.ok-row::after{content:'';order:-1;flex:none;width:7px;height:7px;margin-right:3px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform .15s}
 .ok-row[aria-expanded="true"]::after{transform:rotate(45deg)}
 .ok-list .card{background:none;border:0;border-top:1px solid var(--line);border-radius:0}
 .ok-list .card-head{display:none}
@@ -39,6 +39,7 @@
 .card-head .l{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
 .sub{font-size:12px;color:var(--muted)}
 .err{font-size:12px;color:var(--amber)}
+.err.danger{color:var(--red)}
 .vds{display:grid;grid-template-columns:56px minmax(0,1fr);align-items:start;gap:8px}
 .vds-l{font-size:11px;color:var(--muted);padding-top:6px}
 .vds>.sub{padding-top:5px}
@@ -46,7 +47,7 @@
 .vd{display:inline-flex;align-items:baseline;gap:8px;font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid var(--line2);color:var(--text2);white-space:nowrap}
 .vd b{font-weight:600;color:var(--text)}
 .vd .vd-size{color:var(--muted)}
-.vd .vd-st{font-family:'IBM Plex Sans KR',sans-serif}
+.vd .vd-st{font-family:var(--sans)}
 .vd.caution b,.vd.danger b{color:inherit}
 .vd.caution{border-color:var(--amber-line);color:var(--amber)}
 .vd.danger{border-color:var(--red-line);color:var(--red)}
@@ -82,6 +83,7 @@
 .bay.remove .top{color:var(--text2)}
 .bay.remove .t{color:var(--text)}
 .pill.remove{background:var(--line2);color:var(--text)}
+.bay:not(.empty):hover{background-image:var(--hover)}
 .bay[aria-pressed="true"]{box-shadow:0 0 0 2px var(--text)}
 .bay.empty{border:1px dashed var(--line2);background:transparent;cursor:default}
 .bay.empty .top,.bay.empty .t{color:var(--dim)}
@@ -106,16 +108,15 @@
 .ok-list>.ok-row:first-child,.gloss details:first-child>.ok-row{border-top:0}
 .gloss summary{list-style:none}
 .gloss summary::-webkit-details-marker{display:none}
-.gloss .ok-row .name{min-width:92px;font-family:'IBM Plex Sans KR',sans-serif}
+.gloss .ok-row .name{min-width:92px;font-family:var(--sans)}
 .gloss details[open]>.ok-row::after{transform:rotate(45deg)}
 .gloss dl{margin:0;padding:4px var(--pad) 8px;border-top:1px solid var(--line);display:grid;grid-template-columns:170px minmax(0,1fr) 170px 170px;font-size:13px}
 .gloss dt,.gloss dd{margin:0;padding:10px 20px 10px 0;border-top:1px solid var(--line)}
 .gloss dt{font-weight:600;color:var(--text)}
 .gloss dt small{display:block;margin-top:2px;font-family:var(--mono);font-size:10px;font-weight:400;color:var(--dim)}
 .gloss dd{color:var(--text2);line-height:1.55}
-.gloss dd.lim{font-size:12px;color:var(--muted)}
+.gloss dd.lim{font-size:12px;color:var(--muted);display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 6px;align-content:start}
 .gloss dd.wide{grid-column:span 3}
-.gloss dd.lim{display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 6px;align-content:start}
 .gloss dd.c::before{content:'주의';font-weight:600}
 .gloss dd.d::before{content:'위험';font-weight:600}
 .gloss dl>dt:first-child,.gloss dl>dt:first-child+dd,.gloss dl>dt:first-child+dd+dd,.gloss dl>dt:first-child+dd+dd+dd{border-top:0}
@@ -136,15 +137,15 @@
   .vds-l,.vds>.sub{padding-top:0}
   /* bays keep a readable width; a wide enclosure scrolls sideways inside its box, and a
      soft glow on an edge shows there is more to that side (the glow stays put, the cover scrolls) */
+  /* the edge glow is --text at 22% fading out (gradient stops need the colour with alpha) */
   .bays{--bay-min:45px;padding:6px;gap:4px;overflow-x:auto;
     background:
-      linear-gradient(to right, var(--panel2) 40%, rgba(10,12,15,0)) left center / 28px 100% no-repeat local,
-      linear-gradient(to left, var(--panel2) 40%, rgba(10,12,15,0)) right center / 28px 100% no-repeat local,
+      linear-gradient(to right, var(--panel2) 40%, transparent) left center / 28px 100% no-repeat local,
+      linear-gradient(to left, var(--panel2) 40%, transparent) right center / 28px 100% no-repeat local,
       radial-gradient(farthest-side at 0 50%, rgba(236,238,242,0.22), rgba(236,238,242,0)) left center / 12px 100% no-repeat scroll,
       radial-gradient(farthest-side at 100% 50%, rgba(236,238,242,0.22), rgba(236,238,242,0)) right center / 12px 100% no-repeat scroll,
       var(--panel2)}
   .bay{min-height:56px;padding:4px 5px}
-  .bay .t{font-size:11px;line-height:1.25;white-space:normal;word-break:keep-all;overflow-wrap:anywhere}
 }
 </style>
 <style>
@@ -188,7 +189,7 @@
     <span><i style="background:var(--red)"></i>위험</span>
     <span><i style="border:1px solid var(--sky)"></i>핫스페어, 미사용</span>
     <span><i class="remove-swatch" style="width:12px;height:9px;border-radius:2px"></i>제거 대상 (교체되어 RAID에서 빠진 불량 디스크)</span>
-    <span><i style="width:12px;height:9px;border-radius:2px;border:1px dashed var(--dim)"></i>빈 슬롯</span>
+    <span><i style="width:12px;height:9px;border-radius:2px;border:1px dashed var(--line2)"></i>빈 슬롯</span>
   </div>
 </section>
 
@@ -244,7 +245,8 @@
   }
 
   var R = window.DiskRules;
-  var AMBER = '#ffb547', RED = '#ff6b6b', SKY = '#7dd3fc', BLUE = '#3b8fbf';
+  // the common.css colours (inline styles take var())
+  var AMBER = 'var(--amber)', RED = 'var(--red)', BLUE = 'var(--blue)', MUTED = 'var(--muted)';
   var SPARE = { ghs: 1, dhs: 1, ugood: 1, ugunsp: 1 };
   var LEVEL_LABEL = { ok: '정상', caution: '주의', danger: '위험', remove: '제거 대상' };
 
@@ -332,11 +334,11 @@
       .sort(function (a, b) { return (b.lvl === 'danger') - (a.lvl === 'danger'); });
     var vdNote = badVd.length ? badVd.slice(0, 2).map(function (x) { return x.host + ' ' + x.v.id + ' ' + (x.gone ? '사라짐' : R.vdLabel(x.v)); }).join(', ') : '모두 정상';
     var vdSegs = '<div class="segs" aria-hidden="true">' + vds.map(function (x) {
-      return '<i style="background:' + (color(x.lvl) || SKY) + '"></i>';
+      return '<i style="background:' + (color(x.lvl) || BLUE) + '"></i>';
     }).join('') + '</div>';
 
     var srvSegs = '<div class="segs" aria-hidden="true">' + models.map(function (m) {
-      return '<i style="background:' + (m.missing ? 'transparent;border:1px dashed #8b919c' : (color(m.level) || BLUE)) + '"></i>';
+      return '<i style="background:' + (m.missing ? 'transparent;border:1px dashed ' + MUTED : (color(m.level) || BLUE)) + '"></i>';
     }).join('') + '</div>';
 
     $('summary').innerHTML =
@@ -499,17 +501,17 @@
     var html = '<div class="card"><div class="card-head"><div class="l"><span class="name">' + esc(m.host) + '</span>' +
       '<span class="sub">' + esc(diskCounts(m)) + '</span>' +
       (m.maint ? '<span class="sub maint">점검 중 · ' + esc(maintUntil(m.maint)) + '</span>' : '') + '</div>' +
-      '<span class="sub">' + (parts.length ? parts.join('<span style="color:var(--muted)">, </span>') : '정상') + '</span></div>';
+      '<span class="sub">' + (parts.length ? parts.join('<span style="color:' + MUTED + '">, </span>') : '정상') + '</span></div>';
     if (d.errors && d.errors.length) html += '<span class="err">수집 오류: ' + esc(d.errors.join(', ')) + '</span>';
     if (ms.vds.length || ms.enclosures.length) {
-      html += '<span class="err" style="color:' + RED + '">사라짐: ' +
+      html += '<span class="err danger">사라짐: ' +
         ms.vds.map(function (v) { return 'RAID 볼륨 ' + v.id + ' (' + [v.raid, v.size].filter(Boolean).join(' ') + ')'; })
           .concat(ms.enclosures.map(function (e) { return '인클로저 ' + e.id; })).map(esc).join(', ') +
         ' (마지막 확인 ' + esc(seenText(ms)) + '). 일부러 없앤 경우 이 서버에서 root로 ' +
         '<code>/opt/lab-dashboard/disk_collect.py --reset-expected</code>를 실행하면 기준이 다시 잡힙니다.</span>';
     }
     m.manyBad.forEach(function (b) {
-      html += '<span class="err" style="color:' + RED + '">/c' + esc(b.ctrl) + '에 불량(UBad) 디스크가 ' + b.n + '개 있습니다. 인클로저 전원이나 연결이 끊겼을 수 있으니 RAID 볼륨과 마운트를 확인하십시오.</span>';
+      html += '<span class="err danger">/c' + esc(b.ctrl) + '에 불량(UBad) 디스크가 ' + b.n + '개 있습니다. 인클로저 전원이나 연결이 끊겼을 수 있으니 RAID 볼륨과 마운트를 확인하십시오.</span>';
     });
     var noUnit = m.cacheRisks.filter(function (r) { return r.level === 'info'; });
     if (noUnit.length) {
@@ -542,7 +544,7 @@
       html += '<div class="internal"><span>내장</span>' + direct.map(function (i) {
         var on = i.key === sel;
         return '<button type="button" class="bay ' + bayClass(i) + '" data-key="' + esc(i.key) + '" aria-pressed="' + on + '">' +
-          '<span class="led" aria-hidden="true" style="display:inline-block;width:7px;height:7px;border-radius:50%"></span>' +
+          '<span class="led" aria-hidden="true" style="display:inline-block"></span>' +
           '<b>' + esc(i.d.dev) + '</b>' + (bayTempText(i) ? '<span class="t">' + bayTempText(i) + '</span>' : '') +
           (bayNote(i) ? '<span class="note">' + esc(bayNote(i)) + '</span>' : '') + '</button>';
       }).join('') + '</div>';

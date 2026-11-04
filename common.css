@@ -6,9 +6,12 @@
   --amber:#ffb547;--red:#ff6b6b;--sky:#7dd3fc;--blue:#3b8fbf;
   /* State colours: one colour per meaning on every page.
        red = 위험, amber = 주의 (and a waiting job), blue = 정상 (drive lights, the disk page's 정상),
-       grey (--muted) = 정보, neutral, a running job. Sky is NOT a health state: it marks what can be
-       clicked or is emphasised (links, buttons, your own jobs, a switch that is on), the live dot
-       of the time badge (amber once stale), and, as a hollow ring only, a hot spare / unused drive.
+       grey (--muted) = 정보, neutral, a running job. A failed load or action (could not fetch,
+       could not save) is amber, not red: something to check, not a broken server.
+       Sky is NOT a health state: it marks what can be clicked or is emphasised (links, buttons,
+       your own jobs, a switch that is on), an amount in use (the overview's servers up, running
+       jobs and GPU use bars, the /admin trend lines), the live dot of the time badge (amber once
+       stale), and, as a hollow ring only, a hot spare / unused drive.
      Normal stays quiet: the overview and /admin show nothing for it; only the disk page, which
      draws a light for every slot, shows 정상 in blue.
      Two background strengths: -bg for a whole box (notice, stale badge, a hot slot),
@@ -17,18 +20,28 @@
        solid badge          the overview server cards (a summary must catch the eye)
        pill (-pill bg)      the state of one item at its head (disk detail, a job's 대기)
        outlined tag         a trait inside a row (GPU 유휴, RAID set, /admin summary links, root)
-       dot + coloured text  long lists (/admin alerts, existing monitoring)
-       box border + -bg     the box itself is the problem (hot slot, GPU card, notice, stale badge) */
+       dot + coloured text  long lists (/admin alerts, existing monitoring); table cells use the
+                            coloured text alone (.warn / .bad), the column already says what it is
+       box border (+ -bg)   the box itself is the problem: hot slot, notice, stale badge with -bg;
+                            a GPU card or a down server card, already coloured, takes the border only
+     Corners: 16px a box on the page (panel, card, tile, table); 12px a box inside a box (GPU card,
+     slot frame, command box) or a box of controls (tab box, view switch, the account picker beside
+     it, notice); 8px a button, input or tab button; 6px a small tag or a slot; fully round only for
+     state pills, badges, filter chips and the switch. Controls side by side share one outer height.
+     Heights: small buttons 32px (36px on phones), tabs and inputs 36px.
+     Hover is the --hover layer below on everything clickable; keyboard focus is the sky ring
+     (:focus-visible, further down). */
   --amber-bg:rgba(255,181,71,0.08);--red-bg:rgba(255,107,107,0.09);
   --amber-pill:rgba(255,181,71,0.12);--red-pill:rgba(255,107,107,0.14);--blue-pill:rgba(59,143,191,0.12);
   --amber-line:#6b4a14;--red-line:#7a2a2a;--raised:#1c2129;
   --sky-hover:#bae6fd;--sky-line:#2b5f7f;--sky-bg:#1c2a36;
-  --marked:#12151b;
+  --marked:#12151b;--sky-tint:rgba(125,211,252,0.05);
   /* background steps, weakest first: --tint (rows that belong together, e.g. an opened job group),
      --hover (a thin white layer laid OVER whatever is below, so a tinted row still gets one more step),
      --raised (selected: the pressed tab, the current page) */
   --tint:rgba(255,255,255,0.025);--hover:linear-gradient(rgba(255,255,255,0.04),rgba(255,255,255,0.04));--cmd-line:#1d3442;--cmd-bg:#0a1117;
   --bay-line:#181c22;--bay:#12151a;--spare-line:#2f5a70;--remove-line:#3a404b;
+  --sans:'IBM Plex Sans KR',system-ui,sans-serif;
   --mono:'JetBrains Mono','IBM Plex Sans KR',monospace;
   --pad:18px;     /* left and right inside every panel and card */
 }
@@ -38,7 +51,12 @@
    screen), so the centred body and the right-hand badge sit at the same x as on /admin and the
    disk page, which always scroll; overlay scrollbars (phones) take no width, so nothing changes there */
 html{scrollbar-gutter:stable}
-body{margin:0;background:var(--bg);color:var(--text);font-family:'IBM Plex Sans KR',system-ui,sans-serif}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans)}
+/* buttons and fields take the page font (browsers give them their own) */
+button,input,select{font-family:inherit}
+/* keyboard focus: one sky ring everywhere; rows that fill a box that clips (overflow) draw it inside */
+:focus-visible{outline:2px solid var(--sky);outline-offset:2px}
+.ok-row:focus-visible,.tr.grp:focus-visible,summary:focus-visible{outline-offset:-2px}
 a{color:var(--sky)}a:hover{color:var(--sky-hover)}
 .mono{font-family:var(--mono)}
 .wrap{max-width:1280px;margin:0 auto;padding:28px 16px 56px;display:flex;flex-direction:column;gap:24px}

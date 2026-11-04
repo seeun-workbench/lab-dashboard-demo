@@ -27,10 +27,10 @@
 
 /* maintenance switches */
 .maint{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;align-items:start}
-.m-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px var(--pad);display:flex;flex-direction:column;gap:10px}
+.m-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px var(--pad);display:flex;flex-direction:column;gap:10px}
 .m-card.on{border-color:var(--dim);background:var(--marked)}
 .m-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.m-top b{font-family:var(--mono);font-size:14px}
+.m-top b{font-family:var(--mono);font-size:14px;font-weight:600}
 .m-state{font-size:12px;color:var(--muted)}
 .m-card.on .m-state{color:var(--text2)}
 .switch{position:relative;width:46px;height:26px;border-radius:13px;border:1px solid var(--line2);background:var(--line3);cursor:pointer;flex:0 0 auto}
@@ -41,16 +41,18 @@
 .m-fields{display:flex;flex-wrap:wrap;gap:8px}
 .m-fields label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted);flex:1 1 120px;min-width:0}
 .m-fields input{min-height:36px;padding:0 10px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;font-family:var(--mono);font-size:12px;color-scheme:dark;width:100%}
-.m-err{font-size:12px;color:var(--red)}
+/* a failed load or save is something to check (amber), not 위험 */
+.m-err{font-size:12px;color:var(--amber)}
 .m-fields label.m-note{flex:1 1 200px}
 .m-chips{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:6px}
-.m-chip{min-height:32px;padding:0 10px;border:1px solid var(--line2);border-radius:999px;background:transparent;color:var(--text2);font-family:inherit;font-size:12px;cursor:pointer}
+.m-chip{min-height:32px;padding:0 10px;border:1px solid var(--line2);border-radius:999px;background:transparent;color:var(--text2);font-size:12px;cursor:pointer}
 .m-chip[aria-pressed="true"]{border-color:var(--sky);color:var(--sky)}
 .sec-note.lines{display:flex;flex-direction:column;gap:2px;line-height:1.5}
 .m-act{display:flex;gap:8px}
-.m-act button{min-height:36px;padding:0 14px;border-radius:8px;font-family:inherit;font-size:13px;cursor:pointer}
+.m-act button{min-height:36px;padding:0 14px;border-radius:8px;font-size:13px;cursor:pointer}
 .m-on{flex:1 1 auto;border:1px solid var(--sky-line);background:var(--sky-bg);color:var(--sky)}
 .m-cancel{border:1px solid var(--line2);background:transparent;color:var(--muted)}
+.m-on:disabled{opacity:.5;cursor:wait}
 
 /* tables */
 .table{overflow-x:auto}
@@ -92,7 +94,7 @@ td.cmd{font-family:var(--mono);font-size:12px;color:var(--text2);overflow-wrap:a
 .cmdrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
 .cmdrow code{display:block;padding:8px 10px;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-family:var(--mono);font-size:12px;overflow-x:auto;white-space:nowrap}
 .cmdrow small{grid-column:1/-1;color:var(--muted);font-size:11px;margin-top:-2px}
-.copy{min-height:32px;padding:0 12px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:var(--sky);font-size:12px;cursor:pointer;font-family:inherit}
+.copy{min-height:32px;padding:0 12px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:var(--sky);font-size:12px;cursor:pointer}
 /* folded command sets under a table or per server */
 .cmdset{border-top:1px solid var(--line3)}
 .cmdset:first-child{border-top:0}
@@ -117,21 +119,21 @@ details.cmdset.cmds-box>summary::before{left:14px;top:15px}
 .rt{padding:4px var(--pad) 14px calc(var(--pad) + 18px);font-family:var(--mono);font-size:12px}
 .rt-row{display:grid;grid-template-columns:minmax(0,1fr) 90px 96px;gap:10px;align-items:baseline;padding:5px 0;border-top:1px solid var(--line3)}
 .rt-row.head>span:first-child{padding-left:14px}
-.rt-row.head{color:var(--muted);font-family:'IBM Plex Sans KR',sans-serif;font-size:11px;border-top:0}
+.rt-row.head{color:var(--muted);font-family:var(--sans);font-size:11px;border-top:0}
 .rt-name{min-width:0;overflow-wrap:anywhere;color:var(--text2)}
 .rt-size,.rt-time{text-align:right;color:var(--muted);white-space:nowrap}
 .rt-row.hot .rt-name{color:var(--text)}
-.rt-tag{margin-left:8px;padding:1px 6px;border:1px solid var(--amber-line);border-radius:6px;color:var(--amber);font-family:'IBM Plex Sans KR',sans-serif;font-size:11px;white-space:nowrap}
+.rt-tag{margin-left:8px;padding:1px 6px;border:1px solid var(--amber-line);border-radius:6px;color:var(--amber);font-family:var(--sans);font-size:11px;white-space:nowrap}
 .rt-dir>summary{list-style:none;cursor:pointer}
 .rt-dir>summary::-webkit-details-marker{display:none}
 .rt-dir>summary{padding:0}
-.rt-dir>summary .rt-name::before{content:'';display:inline-block;width:7px;height:7px;margin:0 6px 2px 0;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
+.rt-dir>summary .rt-name::before{content:'';display:inline-block;width:7px;height:7px;margin:0 6px 2px 0;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform .15s}
 .rt-dir[open]>summary .rt-name::before{transform:rotate(45deg)}
 .rt>.rt-row .rt-name{padding-left:14px}
 .rt-dir>summary .rt-row .rt-name{padding-left:0}
 .rt-kids{margin:0 0 6px 5px;padding-left:16px;border-left:1px solid var(--line2)}
-.rt-dots{color:var(--muted);font-family:'IBM Plex Sans KR',sans-serif}
-.rt-more{padding:6px 0;color:var(--muted);font-family:'IBM Plex Sans KR',sans-serif;font-size:11px}
+.rt-dots{color:var(--muted);font-family:var(--sans)}
+.rt-more{padding:6px 0;color:var(--muted);font-family:var(--sans);font-size:11px}
 .rt-gone{padding:8px 0 0;color:var(--amber);font-size:12px;overflow-wrap:anywhere}
 .rt-none{padding:12px var(--pad) 12px calc(var(--pad) + 18px);font-size:13px;color:var(--muted);border-top:1px solid var(--line3)}
 .rt-none:first-child{border-top:0}
@@ -142,29 +144,29 @@ details.cmdset.cmds-box>summary::before{left:14px;top:15px}
    and each column stacks on its own, so a tall card leaves no blank beside the cards after it */
 .cron{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:start}
 .cron .col{display:flex;flex-direction:column;gap:10px;min-width:0}
-.c-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px var(--pad);display:flex;flex-direction:column;gap:10px;min-width:0}
+.c-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px var(--pad);display:flex;flex-direction:column;gap:10px;min-width:0}
 .c-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 10px;align-items:baseline}
-.c-top b{font-family:var(--mono);font-size:14px}
+.c-top b{font-family:var(--mono);font-size:14px;font-weight:600}
 .c-count{display:flex;gap:10px;font-size:12px}
 .c-items{display:flex;flex-direction:column;gap:6px}
 .c-item{display:grid;grid-template-columns:78px minmax(0,1fr);gap:8px;align-items:start;font-size:12px}
 .c-item .what b{font-weight:600}
 .c-item .obj{display:block;padding-left:10px;margin-top:3px}
-/* '외 N개' / '접기': a text button, so its chevron points the way the list moves (down to show more, up to fold),
-   as the overview's '더 보기 / 작업 접기'; the <details> heading rows below use ›/∨ */
-.c-item .more{display:block;position:relative;padding:4px 0 4px 26px;margin-top:2px;background:none;border:0;font:inherit;color:var(--muted);cursor:pointer;text-align:left}
-/* hover: the shared --hover layer (common.css) for every button and fold row, as on the overview */
-.c-item .more:hover{color:var(--text2);background-image:var(--hover)}
-.sum a:hover,.copy:hover,.m-chip:hover,.m-cancel:hover,.m-on:hover,.tabs button:not([aria-pressed="true"]):hover,.cmdset>summary:hover{background-image:var(--hover)}
-.c-item .more::before{content:'';position:absolute;top:6px;left:11px;width:7px;height:7px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);transition:transform .15s}
-/* open: the word says what a click does ('접기'), so the chevron points up the way the list folds */
-.c-item .more[aria-expanded="true"]::before{top:11px;transform:rotate(-135deg)}
+/* '외 N개' / '접기': the same small button as the overview's '더 보기 / 작업 접기' (32px, 36px on phones),
+   its chevron pointing the way the list moves (down to show more, up to fold); the <details> heading
+   rows below use ›/∨ */
+.c-item .more{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 12px;margin-top:6px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:var(--sky);font-size:12px;cursor:pointer}
+.c-item .more::before{content:'';flex:none;width:7px;height:7px;margin-top:-4px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);transition:transform .15s}
+.c-item .more[aria-expanded="true"]::before{margin-top:4px;transform:rotate(225deg)}
+/* hover: the shared --hover layer (common.css) for every button, switch and fold row, as on the overview */
+.c-item .more:hover,.sum a:hover,.copy:hover,.m-chip:hover,.m-cancel:hover,.m-on:not(:disabled):hover,.switch:not(:disabled):hover,
+.tabs button:not([aria-pressed="true"]):hover,summary:hover{background-image:var(--hover)}
 .c-item .what{font-family:var(--mono);color:var(--text2);overflow-wrap:anywhere}
 .c-item .what span{color:var(--muted)}
 details{font-size:12px;color:var(--muted)}
 summary{position:relative;cursor:pointer;padding:4px 0 4px 16px;list-style:none}
 summary::-webkit-details-marker{display:none}
-details:not(.rt-dir)>summary::before{content:'';position:absolute;top:8px;left:1px;width:7px;height:7px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
+details:not(.rt-dir)>summary::before{content:'';position:absolute;top:8px;left:1px;width:7px;height:7px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform .15s}
 details:not(.rt-dir)[open]>summary::before{transform:rotate(45deg)}
 .c-ok{display:flex;flex-wrap:wrap;gap:6px;padding-top:6px}
 .c-ok span{font-family:var(--mono);padding:2px 8px;border:1px solid var(--line2);border-radius:6px}
@@ -172,37 +174,40 @@ details:not(.rt-dir)[open]>summary::before{transform:rotate(45deg)}
 
 /* trends */
 .tabs{display:flex;flex-wrap:wrap;gap:4px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
-.tabs button{min-height:36px;padding:0 14px;border:0;border-radius:8px;background:transparent;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit}
+.tabs button{min-height:36px;padding:0 14px;border:0;border-radius:8px;background:transparent;color:var(--muted);font-size:13px;cursor:pointer}
 .tabs button[aria-pressed="true"]{background:var(--raised);color:var(--text)}
 .charts{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
-.chart{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px var(--pad) 8px;display:flex;flex-direction:column;gap:6px;min-width:0}
+/* bottom 12px: the time labels already sit in the chart's own bottom margin */
+.chart{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px var(--pad) 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
 .chart-head{display:flex;justify-content:space-between;align-items:baseline;font-size:12px}
 .chart-head b{font-family:var(--mono);font-size:13px}
 .chart-head span{font-family:var(--mono);color:var(--text2)}
 .chart svg{display:block;width:100%;height:auto;overflow:visible;touch-action:pan-y}
 .chart .none{height:110px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--dim)}
+.t11{font-size:11px}.t12{font-size:12px}
 .tip{position:fixed;pointer-events:none;padding:6px 9px;background:var(--raised);border:1px solid var(--line2);border-radius:8px;font-family:var(--mono);font-size:12px;color:var(--text);white-space:nowrap;z-index:5}
 
 @media (max-width:640px){
-  .alert{grid-template-columns:72px minmax(0,1fr);gap:4px 12px;padding:12px 16px}
+  .alert{grid-template-columns:72px minmax(0,1fr);gap:4px 12px;padding:12px var(--pad)}
+  /* small buttons grow to 36px on phones, as on the overview */
+  .copy,.m-chip,.sum a,.c-item .more{min-height:36px}
   .alert .msg{grid-column:1/-1}
   .c-item{grid-template-columns:52px minmax(0,1fr)}
-  .zp{padding:14px 16px}
-  .cmdset>summary{padding:12px 16px 12px 34px}
-  .cmdset.cmds-box>summary{padding:10px 14px 10px 32px}
-  details.cmdset.cmds-box>summary::before{left:14px}
-  .rt{padding:4px 16px 14px}
+  .zp{padding:14px var(--pad)}
+  .cmdset>summary{padding:12px var(--pad) 12px calc(var(--pad) + 18px)}
+  /* /root lists drop their 18px indent on phones to keep the width */
+  .rt{padding:4px var(--pad) 14px}
   .rt-row{grid-template-columns:minmax(0,1fr) auto;gap:2px 10px}
   .rt-name{grid-column:1/-1}
   .rt-size{text-align:left}
   .rt-row.head{display:none}
   .rt-kids{padding-left:12px}
-  .rt-none{padding:12px 16px 12px 34px}
+  .rt-none{padding:12px var(--pad) 12px calc(var(--pad) + 18px)}
   .cmdrow code{white-space:normal;overflow-wrap:anywhere}
   /* tables become one labelled block per row */
   .kv thead{display:none}
   .kv table,.kv tbody{display:block}
-  .kv tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 12px;padding:14px 16px;border-top:1px solid var(--line3)}
+  .kv tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 12px;padding:14px var(--pad);border-top:1px solid var(--line3)}
   .kv tr:first-child{border-top:0}
   .kv td{display:block;padding:0;border:0;text-align:left;min-width:0;word-break:keep-all;overflow-wrap:anywhere}
   .kv td.num{text-align:left}
@@ -211,7 +216,7 @@ details:not(.rt-dir)[open]>summary::before{transform:rotate(45deg)}
   #checks td[data-l="slurmd"]{grid-column:1/-1}
   .tabs button{flex:1 1 auto}
   #checks td.mnt{grid-column:1/-1;max-width:none}
-  .kv td[data-l]::before{content:attr(data-l);display:block;margin-bottom:2px;font-family:'IBM Plex Sans KR',sans-serif;font-size:11px;font-weight:400;color:var(--muted)}
+  .kv td[data-l]::before{content:attr(data-l);display:block;margin-bottom:2px;font-family:var(--sans);font-size:11px;font-weight:400;color:var(--muted)}
   .kv td.srv,.kv td.cmd,.kv td[colspan]{grid-column:1/-1}
   .kv td.cmd{min-width:0}
   /* 프로세스 종류별: server as the heading, then the four kinds two by two */
@@ -708,7 +713,7 @@ details:not(.rt-dir)[open]>summary::before{transform:rotate(45deg)}
     var totals = servers().filter(function (x) { return x.admin && x.admin.zombies; })
       .map(function (x) { return x.host + ' ' + x.admin.zombies.total.toLocaleString(); }).join(' · ');
     $('zombies').innerHTML = (html || '<div class="empty">조치가 필요한 좀비 프로세스가 없습니다.</div>') +
-      (totals ? '<div class="zp"><span class="ok mono" style="font-size:12px">서버별 좀비 수: ' + esc(totals) + '</span></div>' : '');
+      (totals ? '<div class="zp"><span class="ok mono t12">서버별 좀비 수: ' + esc(totals) + '</span></div>' : '');
   }
   function cmd(host, text, note) {
     return '<div class="cmdrow"><code>' + esc(text) + '</code><button type="button" class="copy" data-copy="' + esc(text) + '">복사</button>' +
@@ -769,7 +774,7 @@ details:not(.rt-dir)[open]>summary::before{transform:rotate(45deg)}
     if (!s) return '';
     var exe = s.run_exe || s.exec;
     return (s.version ? '<br><span class="ok">버전 ' + esc(s.version) + '</span>' : '') +
-      (exe ? '<br><span class="ok mono" style="font-size:11px">' + esc(exe) + '</span>' : '');
+      (exe ? '<br><span class="ok mono t11">' + esc(exe) + '</span>' : '');
   }
   // What a reboot would do with slurmd (empty when fine, or before the collector sends it).
   function bootNote(s) {
@@ -963,7 +968,7 @@ details:not(.rt-dir)[open]>summary::before{transform:rotate(45deg)}
       var checks = Object.keys(c.parts || {}).sort();
       var oldAt = now() - 86400 - 3600;
       var stale = (now() - c.mtime) > CRON_STALE_S;
-      return '<div class="c-card"><div class="c-top"><b>' + esc(x.host) + '</b><span class="' + (stale ? 'warn' : 'ok') + ' mono" style="font-size:12px">' + esc(c.time || '') + (stale ? ' (오래됨)' : '') + '</span></div>' +
+      return '<div class="c-card"><div class="c-top"><b>' + esc(x.host) + '</b><span class="' + (stale ? 'warn' : 'ok') + ' mono t12">' + esc(c.time || '') + (stale ? ' (오래됨)' : '') + '</span></div>' +
         '<div class="c-count">' + (count('CRITICAL') ? lvHtml('danger', '위험 ' + count('CRITICAL')) : '') + (count('WARNING') ? lvHtml('caution', '주의 ' + count('WARNING')) : '') +
         (count('UNKNOWN') ? lvHtml('info', '알 수 없음 ' + count('UNKNOWN')) : '') + '<span class="ok">정상 ' + count('OK') + '</span></div>' +
         (bad.length ? '<div class="c-items">' + groups(bad).map(function (g) {
@@ -1062,18 +1067,18 @@ details:not(.rt-dir)[open]>summary::before{transform:rotate(45deg)}
       var last = s[s.length - 1];
       var grid = [0, 0.5, 1].map(function (f) {
         var yy = y(max * f).toFixed(1);
-        return '<line x1="0" x2="' + W + '" y1="' + yy + '" y2="' + yy + '" stroke="#1c1f26" stroke-width="1"/>';
+        return '<line x1="0" x2="' + W + '" y1="' + yy + '" y2="' + yy + '" style="stroke:var(--line)" stroke-width="1"/>';
       }).join('');
       var ticks = [0, 6, 12, 18, 24].map(function (hh) {
         var t = start + hh * 3600;
-        return '<text x="' + x(t).toFixed(1) + '" y="' + (H - 3) + '" fill="#5d636e" font-size="10" font-family="JetBrains Mono,monospace" text-anchor="' + (hh === 0 ? 'start' : hh === 24 ? 'end' : 'middle') + '">' + hm(t) + '</text>';
+        return '<text x="' + x(t).toFixed(1) + '" y="' + (H - 3) + '" style="fill:var(--dim)" font-size="10" font-family="JetBrains Mono,monospace" text-anchor="' + (hh === 0 ? 'start' : hh === 24 ? 'end' : 'middle') + '">' + hm(t) + '</text>';
       }).join('');
-      var yl = '<text x="2" y="' + (y(max) + 10).toFixed(1) + '" fill="#5d636e" font-size="10" font-family="JetBrains Mono,monospace">' + max + mi.unit + '</text>';
+      var yl = '<text x="2" y="' + (y(max) + 10).toFixed(1) + '" style="fill:var(--dim)" font-size="10" font-family="JetBrains Mono,monospace">' + max + mi.unit + '</text>';
       return '<div class="chart"><div class="chart-head"><b>' + esc(h) + '</b><span>' + trendNow(h, last, end, mi) + '</span></div>' +
         '<svg viewBox="0 0 ' + W + ' ' + H + '" data-host="' + esc(h) + '" data-max="' + max + '" role="img" aria-label="' + esc(h + ' ' + mi.label + ' 24시간') + '">' +
-        grid + yl + ticks + '<path d="' + d + '" fill="none" stroke="#7dd3fc" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
-        '<line class="xh" x1="0" x2="0" y1="' + PAD_T + '" y2="' + (H - PAD_B) + '" stroke="#5d636e" stroke-width="1" vector-effect="non-scaling-stroke" visibility="hidden"/>' +
-        '<circle class="dot" r="4" fill="#7dd3fc" stroke="#0e1014" stroke-width="2" visibility="hidden"/></svg></div>';
+        grid + yl + ticks + '<path d="' + d + '" fill="none" style="stroke:var(--sky)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
+        '<line class="xh" x1="0" x2="0" y1="' + PAD_T + '" y2="' + (H - PAD_B) + '" style="stroke:var(--dim)" stroke-width="1" vector-effect="non-scaling-stroke" visibility="hidden"/>' +
+        '<circle class="dot" r="4" style="fill:var(--sky);stroke:var(--panel)" stroke-width="2" visibility="hidden"/></svg></div>';
     }).join('');
     $('charts').innerHTML = html;
   }

@@ -49,6 +49,7 @@
 .down-info span:last-child{overflow-wrap:anywhere}
 .gpu-head{display:flex;justify-content:space-between;font-size:11px}
 .gpu-grid{flex:1 1 auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(84px,1fr);gap:8px}
+/* white at 14%: the card sits on a heat-map colour, so its edge is a light line, not a theme colour */
 .gpu{border-radius:12px;padding:10px 12px;border:1px solid rgba(255,255,255,0.14);display:flex;flex-direction:column;justify-content:space-between;gap:6px}
 .gpu.warn{border-color:var(--amber)}
 .gpu-top{display:flex;justify-content:space-between;gap:6px;font-family:var(--mono);font-size:11px}
@@ -56,23 +57,23 @@
 .gpu-note{font-size:11px;color:var(--amber)}
 
 .tabs{display:flex;gap:4px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
-.tabs button{min-height:36px;padding:0 14px;border:0;border-radius:8px;font-family:'IBM Plex Sans KR',sans-serif;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;background:transparent;color:var(--muted)}
+.tabs button{min-height:36px;padding:0 14px;border:0;border-radius:8px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;background:transparent;color:var(--muted)}
 .tabs button[aria-pressed="true"]{background:var(--raised);color:var(--text)}
 .tabs button span{font-family:var(--mono);font-size:12px;color:var(--dim)}
 .tabs button[aria-pressed="true"] span{color:var(--sky)}
 .table{overflow-x:auto;border:1px solid var(--line);border-radius:16px;background:var(--panel)}
 .table-in{min-width:840px}
 .tr{display:grid;grid-template-columns:96px 1.4fr 1fr 1fr 0.9fr 0.8fr 88px;gap:20px;align-items:center;padding:14px var(--pad)}
-.th{padding:12px var(--pad);font-size:11px;color:var(--muted);border-bottom:1px solid var(--line2);align-items:start}
+.th{padding:12px var(--pad);font-size:11px;font-weight:500;color:var(--muted);border-bottom:1px solid var(--line2);align-items:start}
 .tr.first{border-top:1px solid var(--line2)}
 .tr.next{border-top:1px solid var(--line3)}
 .tr.top{border-top:none}
-.tr.mine{box-shadow:inset 3px 0 0 var(--sky);background:rgba(125,211,252,0.05)}
+.tr.mine{box-shadow:inset 3px 0 0 var(--sky);background:var(--sky-tint)}
 .tr.mine .avatar{box-shadow:0 0 0 2px var(--panel),0 0 0 3.5px var(--sky)}
 .job-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
 .me-pick{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
 /* same outer height and corners as the .tabs box beside it (4 + 36 + 4 + borders = 46px), so both edges line up */
-.me-pick select{min-height:46px;max-width:160px;padding:0 10px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;font-family:'IBM Plex Sans KR',sans-serif;font-size:13px}
+.me-pick select{min-height:46px;max-width:160px;padding:0 10px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;font-size:13px}
 .job-srv{font-family:var(--mono);font-size:13px;font-weight:600}
 .job-name{font-family:var(--mono);font-size:14px;font-weight:500;overflow-wrap:anywhere}
 .job-sub{font-family:var(--mono);font-size:11px;color:var(--muted)}
@@ -92,7 +93,7 @@
 .pill i{width:6px;height:6px;border-radius:50%;background:currentColor}
 .pill.wait{background:var(--amber-pill);color:var(--amber)}
 .more{display:flex;flex-wrap:wrap;gap:8px;padding:6px var(--pad) 10px calc(var(--pad) + 116px);border-top:1px solid var(--line3)}
-.more button{min-height:32px;padding:0 12px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:var(--sky);font-family:'IBM Plex Sans KR',sans-serif;font-size:12px;cursor:pointer}
+.more button{min-height:32px;padding:0 12px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:var(--sky);font-size:12px;cursor:pointer}
 .more button:hover,.tabs button:not([aria-pressed="true"]):hover{background-image:var(--hover)}
 /* chevrons: a text button that says what it does ('더 보기', '펼치기', '접기') points the way the list moves,
    down to grow and up to fold, as /admin '외 N개 / 접기'; a heading row without words uses ›/∨ (/admin, disk page) */
@@ -115,7 +116,7 @@
 @media (max-width:640px){
   .table-in{min-width:0}
   .tr.th{display:none}
-  .tr{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"srv srv" "name pill" "user el" "chips time";gap:8px 12px;padding:12px 16px}
+  .tr{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"srv srv" "name pill" "user el" "chips time";gap:8px 12px;padding:12px var(--pad)}
   .tr.next{grid-template-areas:"name pill" "user el" "chips time"}
   .tr.next .job-srv{display:none}
   .tr>:nth-child(1){grid-area:srv}
@@ -128,7 +129,7 @@
   /* Without the header row, label running jobs' start and elapsed (pending ones already say 제출/대기). */
   .job-time:not(.wait)::before{content:'시작 ';color:var(--muted)}
   .job-el:not(.wait)::before{content:'경과 ';color:var(--muted);font-weight:400}
-  .more{padding:6px 16px 10px}
+  .more{padding:6px var(--pad) 10px}
   /* buttons share a line when they fit, else each takes its own full line */
   .more button{flex:1 1 auto;min-height:36px}
   /* inside an opened group every row has the same user: drop the avatar line */
@@ -137,8 +138,8 @@
   .tr.in-grp>:nth-child(4){align-self:start}
   .job-ctl,.tabs{width:100%}
   .tabs button{flex:1 1 0;justify-content:center;gap:5px;padding:0 6px;white-space:nowrap}
+  .srv-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
-@media (max-width:640px){.srv-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:340px){.srv-grid{grid-template-columns:minmax(0,1fr)}.card.wide{grid-column:auto}}
 </style>
 <style>
@@ -224,8 +225,10 @@
   var GROUP_MIN = 5;             // a user with this many jobs on one server gets one summary row
   var GROUPS_KEY = 'lab-dashboard.groups';
 
-  var AMBER = '#ffb547', RED = '#ff6b6b', SKY = '#7dd3fc';
-  var OFF = '#1c1f26';
+  // the common.css colours (inline styles take var()); the heat-map and avatar palettes below are
+  // this page's own data colours, not theme colours
+  var AMBER = 'var(--amber)', RED = 'var(--red)', SKY = 'var(--sky)', BLUE = 'var(--blue)', MUTED = 'var(--muted)';
+  var OFF = 'var(--line)';
   var TEAL = ['#141c1d', '#13332f', '#165049', '#1b7064'];   // CPU heatmap: <30, <60, <85, >=85
   // User avatar colors: 12 hues at equal lightness and chroma (OKLCH L 0.82 C 0.10,
   // text L 0.25), hue 125-350 in steps of ~20; the red, orange and yellow range is
@@ -280,7 +283,7 @@
     return { bg: TEAL[i], fg: i ? '#ffffff' : '#eceef2', sub: i >= 2 ? '#d5dae2' : '#9aa1ac',
              on: i ? '#e6e9ef' : '#6b7380', off: 'rgba(255,255,255,0.1)' };
   }
-  var DOWN_C = { bg: '#0e1014', fg: '#c1c6cf', sub: '#8b919c', on: '#5d636e', off: OFF };
+  var DOWN_C = { bg: 'var(--panel)', fg: 'var(--text2)', sub: MUTED, on: 'var(--dim)', off: OFF };
 
   // ---------- time helpers ----------
 
@@ -432,7 +435,7 @@
     var gNote = idle ? '유휴 ' + idle + '개' : (outside ? 'SLURM 외 사용 ' + outside + '개' : '평균 사용률 ' + avg + '%');
     var gSegs = gpus.map(function (i) {
       var u = i.g.util || 0;
-      return { c: (i.idleH || i.outside) ? AMBER : (u > 0 ? (u >= 85 ? SKY : (u >= 60 ? '#5fa8d3' : '#3b8fbf')) : (i.held ? '#2b5f7f' : OFF)) };
+      return { c: (i.idleH || i.outside) ? AMBER : (u > 0 ? (u >= 85 ? SKY : (u >= 60 ? '#5fa8d3' : BLUE)) : (i.held ? 'var(--sky-line)' : OFF)) };
     });
 
     var run = jobs.filter(jobRunning).length;
@@ -454,7 +457,7 @@
     if (warned.length) sNote.push('확인 필요 ' + warned.join(', '));
     var nSegs = nodes.map(function (n) {
       if (n.ns.kind === 'up') return { c: warned.indexOf(n.host) >= 0 ? AMBER : SKY };
-      return n.ns.kind === 'gone' || n.ns.long ? { c: 'transparent', b: '1px dashed ' + AMBER } : { c: 'transparent', b: '1px dashed #8b919c' };
+      return n.ns.kind === 'gone' || n.ns.long ? { c: 'transparent', b: '1px dashed ' + AMBER } : { c: 'transparent', b: '1px dashed ' + MUTED };
     });
 
     disksWarn.sort(function (a, b) { return b.pct - a.pct; });

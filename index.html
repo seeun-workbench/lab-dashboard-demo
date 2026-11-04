@@ -72,8 +72,11 @@
 .tr.mine .avatar{box-shadow:0 0 0 2px var(--panel),0 0 0 3.5px var(--sky)}
 .job-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
 .me-pick{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
-/* same outer height and corners as the .tabs box beside it (4 + 36 + 4 + borders = 46px), so both edges line up */
-.me-pick select{min-height:46px;max-width:160px;padding:0 10px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;font-size:13px}
+/* the browser's own dropdown arrow is replaced by the page's chevron (7px, 1.5px, muted, pointing down) */
+.me-pick .sel{position:relative;display:inline-flex}
+.me-pick .sel::after{content:'';position:absolute;right:13px;top:50%;width:7px;height:7px;margin-top:-6px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(45deg);pointer-events:none}
+.me-pick select{-webkit-appearance:none;appearance:none;min-height:36px;max-width:160px;padding:0 34px 0 12px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;font-size:13px;color-scheme:dark;cursor:pointer}
+.me-pick select:hover{background-image:var(--hover)}
 .job-srv{font-family:var(--mono);font-size:13px;font-weight:600}
 .job-name{font-family:var(--mono);font-size:14px;font-weight:500;overflow-wrap:anywhere}
 .job-sub{font-family:var(--mono);font-size:11px;color:var(--muted)}
@@ -187,7 +190,7 @@
   <div class="sec-head">
     <h2>SLURM 작업 현황</h2>
     <div class="job-ctl">
-      <label class="me-pick"><span>내 계정</span><select id="me" aria-label="내 계정"><option value="">선택 안 함</option></select></label>
+      <label class="me-pick"><span>내 계정</span><span class="sel"><select id="me" aria-label="내 계정"><option value="">선택 안 함</option></select></span></label>
       <div class="tabs" role="group" aria-label="작업 필터" id="tabs"></div>
     </div>
   </div>

@@ -27,6 +27,7 @@
 .ok-row .dot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--blue)}
 .ok-row .name{flex:none;min-width:72px;font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text)}
 .ok-row .info{flex:1;min-width:0}
+.ok-row .maint{color:var(--text2)}
 .ok-row::after{content:'';order:-1;flex:none;width:7px;height:7px;margin-right:3px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
 .ok-row[aria-expanded="true"]::after{transform:rotate(45deg)}
 .ok-list .card{background:none;border:0;border-top:1px solid var(--line);border-radius:0}
@@ -155,7 +156,7 @@
 <body>
 <div class="wrap">
 
-<div class="demo-banner" role="note">데모: 가짜 데이터<span>실제 서버가 아니라 지어낸 값으로 그린 정적 화면입니다. 시각은 2026-11-03 14:30에 고정되어 있고 갱신되지 않습니다.</span></div>
+<div class="demo-banner" role="note">데모<span>예시 데이터로 만든 화면입니다. 실제 서버와 연결되어 있지 않고, 시각은 2026-11-03 14:30에 멈춰 있습니다.</span></div>
 <header>
   <div class="head-left">
     <h1>디스크 상태</h1>
@@ -564,7 +565,8 @@
         var open = !!okOpen[m.host];
         return '<button type="button" class="ok-row" data-ok-host="' + esc(m.host) + '" aria-expanded="' + open + '">' +
           '<span class="dot" aria-hidden="true"></span><span class="name">' + esc(m.host) + '</span>' +
-          '<span class="info">' + esc(diskCounts(m)) + '</span></button>' + (open ? cardHtml(m) : '');
+          // a 점검 중 server here shows its last data: say so on the row, not only in the folded card
+          '<span class="info">' + esc(diskCounts(m)) + (m.maint ? ' · <span class="maint">점검 중 · ' + esc(maintUntil(m.maint)) + '</span>' : '') + '</span></button>' + (open ? cardHtml(m) : '');
       }).join('') + '</div></div>';
     }
     $('cards').innerHTML = html;

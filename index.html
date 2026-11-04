@@ -97,6 +97,9 @@
 .tr.grp.next{border-top:1px solid var(--line3)}
 .tr.grp:hover{background:var(--raised)}
 .grp-pill{border:1px solid var(--line2);color:var(--sky)}
+/* the chevron points the way a click moves the list (down to unfold, up to fold), as on /admin '외 N개 / 접기' */
+.grp-pill::before{content:'';flex:none;width:6px;height:6px;margin-top:-3px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg)}
+.grp[aria-expanded="true"] .grp-pill::before{margin-top:3px;transform:rotate(225deg)}
 .tr.in-grp,.more.in-grp{background:rgba(255,255,255,0.025)}
 
 /* Phones: each job becomes a small card (server, then name|state, user|elapsed, resources|start) instead of a sideways-scrolling table. */
@@ -138,7 +141,7 @@
 <body>
 <div class="wrap">
 
-<div class="demo-banner" role="note">데모: 가짜 데이터<span>실제 서버가 아니라 지어낸 값으로 그린 정적 화면입니다. 시각은 2026-11-03 14:30에 고정되어 있고 갱신되지 않습니다.</span></div>
+<div class="demo-banner" role="note">데모<span>예시 데이터로 만든 화면입니다. 실제 서버와 연결되어 있지 않고, 시각은 2026-11-03 14:30에 멈춰 있습니다.</span></div>
 <header>
   <div class="head-left">
     <h1>연구실 서버 현황</h1>
@@ -584,7 +587,7 @@
       '<span class="user"><span class="avatar" aria-hidden="true" style="background:' + uc[0] + ';color:' + uc[1] + '">' + esc(g.user.charAt(0).toUpperCase()) + '</span><span>' + esc(g.user) + '</span></span>' +
       '<span class="chips">' + chips.map(function (c) { return '<span class="chip ' + c.cls + '">' + esc(c.label) + '</span>'; }).join('') + '</span>' +
       '<span class="job-time wait"></span><span class="job-el wait"></span>' +
-      '<span class="pill-wrap"><span class="pill grp-pill">' + (open ? '접기 ▴' : '펼치기 ▾') + '</span></span></button>';
+      '<span class="pill-wrap"><span class="pill grp-pill">' + (open ? '접기' : '펼치기') + '</span></span></button>';
   }
 
   function jobRow(j, x, gpuByIdx, nowMs, isFirst, isTop, inGroup) {

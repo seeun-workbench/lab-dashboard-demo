@@ -27,7 +27,8 @@
      Corners: 16px a box on the page (panel, card, tile, table); 12px a box inside a box (GPU card,
      slot frame, command box) or a box of controls (tab box, view switch, the account picker beside
      it, notice); 8px a button, input or tab button; 6px a small tag or a slot; fully round only for
-     state pills, badges, filter chips and the switch. Controls side by side share one outer height.
+     state pills, badges, filter chips and the switch. A lone control beside a tab box (the account
+     picker) takes the tab buttons' 36px, not the box's 46px (tried 46: it looked too heavy).
      Heights: small buttons 32px (36px on phones), tabs and inputs 36px.
      Hover is the --hover layer below on everything clickable; keyboard focus is the sky ring
      (:focus-visible, further down). */

@@ -33,6 +33,7 @@ h2{margin:0;font-size:15px;font-weight:600}
 .seg-nav{display:flex;gap:4px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
 .seg-nav a{min-height:32px;padding:0 14px;display:flex;align-items:center;gap:6px;border-radius:8px;font-size:13px;text-decoration:none;color:var(--muted)}
 .seg-nav [aria-current]{background:var(--raised);color:var(--text)}
+.seg-nav a:not([aria-current]):hover{background:var(--raised);color:var(--text2)}
 .nav-dot{width:6px;height:6px;border-radius:50%}
 /* min-width fits the widest usual text (개요's 마지막 갱신 HH:MM:SS, 171px here) so the pill is the
    same size on every page; 갱신 지연 with a day prefix may grow it by a few px */

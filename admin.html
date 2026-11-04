@@ -79,7 +79,7 @@ td.cmd{font-family:var(--mono);font-size:12px;color:var(--text2);overflow-wrap:a
 
 /* top summary: one link per section with something to look at */
 .sum{display:flex;flex-wrap:wrap;gap:6px}
-.sum a{display:inline-flex;align-items:center;min-height:32px;padding:0 12px;border:1px solid var(--line2);border-radius:8px;color:var(--text2);font-size:13px;text-decoration:none}
+.sum a{display:inline-flex;align-items:center;min-height:32px;padding:0 12px;border:1px solid var(--line2);border-radius:8px;color:var(--text2);font-size:12px;text-decoration:none}
 .sum a.caution{border-color:var(--amber-line);color:var(--amber)}
 .sum a.danger{border-color:var(--red-line);color:var(--red)}
 
@@ -125,7 +125,7 @@ details.cmdset.cmds-box>summary::before{left:14px;top:15px}
 .rt-dir>summary{list-style:none;cursor:pointer}
 .rt-dir>summary::-webkit-details-marker{display:none}
 .rt-dir>summary{padding:0}
-.rt-dir>summary .rt-name::before{content:'';display:inline-block;width:6px;height:6px;margin:0 7px 2px 1px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
+.rt-dir>summary .rt-name::before{content:'';display:inline-block;width:7px;height:7px;margin:0 6px 2px 0;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
 .rt-dir[open]>summary .rt-name::before{transform:rotate(45deg)}
 .rt>.rt-row .rt-name{padding-left:14px}
 .rt-dir>summary .rt-row .rt-name{padding-left:0}
@@ -150,10 +150,14 @@ details.cmdset.cmds-box>summary::before{left:14px;top:15px}
 .c-item{display:grid;grid-template-columns:78px minmax(0,1fr);gap:8px;align-items:start;font-size:12px}
 .c-item .what b{font-weight:600}
 .c-item .obj{display:block;padding-left:10px;margin-top:3px}
-/* '외 N개' / '접기': same chevron and toggle as the <details> folds below */
+/* '외 N개' / '접기': a text button, so its chevron points the way the list moves (down to show more, up to fold),
+   as the overview's '더 보기 / 작업 접기'; the <details> heading rows below use ›/∨ */
 .c-item .more{display:block;position:relative;padding:4px 0 4px 26px;margin-top:2px;background:none;border:0;font:inherit;color:var(--muted);cursor:pointer;text-align:left}
-.c-item .more:hover{color:var(--text2)}
-.c-item .more::before{content:'';position:absolute;top:8px;left:11px;width:7px;height:7px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform .15s}
+/* hover: one raised background for every button and fold row, as on the overview */
+.c-item .more:hover{color:var(--text2);background:var(--raised)}
+.sum a:hover,.copy:hover,.m-chip:hover,.m-cancel:hover,.tabs button:not([aria-pressed="true"]):hover,.cmdset>summary:hover{background:var(--raised)}
+.m-on:hover{border-color:var(--sky)}
+.c-item .more::before{content:'';position:absolute;top:6px;left:11px;width:7px;height:7px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);transition:transform .15s}
 /* open: the word says what a click does ('접기'), so the chevron points up the way the list folds */
 .c-item .more[aria-expanded="true"]::before{top:11px;transform:rotate(-135deg)}
 .c-item .what{font-family:var(--mono);color:var(--text2);overflow-wrap:anywhere}

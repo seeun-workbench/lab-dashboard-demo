@@ -92,7 +92,7 @@
 .pill.wait{background:rgba(255,181,71,0.12);color:var(--amber)}
 .more{display:flex;flex-wrap:wrap;gap:8px;padding:6px var(--pad) 10px calc(var(--pad) + 116px);border-top:1px solid var(--line3)}
 .more button{min-height:32px;padding:0 12px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:var(--sky);font-family:'IBM Plex Sans KR',sans-serif;font-size:12px;cursor:pointer}
-.more button:hover,.tabs button:not([aria-pressed="true"]):hover{background:var(--raised)}
+.more button:hover,.tabs button:not([aria-pressed="true"]):hover{background-image:var(--hover)}
 /* chevrons: a text button that says what it does ('더 보기', '펼치기', '접기') points the way the list moves,
    down to grow and up to fold, as /admin '외 N개 / 접기'; a heading row without words uses ›/∨ (/admin, disk page) */
 .more button{display:inline-flex;align-items:center;justify-content:center;gap:6px}
@@ -101,12 +101,14 @@
 .tr.grp{width:100%;border:0;margin:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .tr.grp.first{border-top:1px solid var(--line2)}
 .tr.grp.next{border-top:1px solid var(--line3)}
-.tr.grp:hover{background:var(--raised)}
+.tr.grp:hover{background-image:var(--hover)}
+/* an opened group's own row takes the tint too, so the row and its jobs read as one block */
+.tr.grp[aria-expanded="true"]{background-color:var(--tint)}
 /* a button, so a button's 8px corners (round pills are states: 실행 중, 대기) */
 .grp-pill{border:1px solid var(--line2);border-radius:8px;color:var(--sky)}
 .grp-pill::before{content:'';flex:none;width:7px;height:7px;margin-top:-4px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);transition:transform .15s}
 .grp[aria-expanded="true"] .grp-pill::before{margin-top:4px;transform:rotate(225deg)}
-.tr.in-grp,.more.in-grp{background:rgba(255,255,255,0.025)}
+.tr.in-grp,.more.in-grp{background:var(--tint)}
 
 /* Phones: each job becomes a small card (server, then name|state, user|elapsed, resources|start) instead of a sideways-scrolling table. */
 @media (max-width:640px){

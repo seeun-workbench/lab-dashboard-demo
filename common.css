@@ -6,7 +6,11 @@
   --amber:#ffb547;--red:#ff6b6b;--sky:#7dd3fc;--blue:#3b8fbf;
   --amber-bg:rgba(255,181,71,0.08);--amber-line:#6b4a14;--red-line:#7a2a2a;--raised:#1c2129;
   --sky-hover:#bae6fd;--sky-line:#2b5f7f;--sky-bg:#1c2a36;
-  --marked:#12151b;--cmd-line:#1d3442;--cmd-bg:#0a1117;
+  --marked:#12151b;
+  /* background steps, weakest first: --tint (rows that belong together, e.g. an opened job group),
+     --hover (a thin white layer laid OVER whatever is below, so a tinted row still gets one more step),
+     --raised (selected: the pressed tab, the current page) */
+  --tint:rgba(255,255,255,0.025);--hover:linear-gradient(rgba(255,255,255,0.04),rgba(255,255,255,0.04));--cmd-line:#1d3442;--cmd-bg:#0a1117;
   --bay-line:#181c22;--bay:#12151a;--spare-line:#2f5a70;--remove-line:#3a404b;
   --mono:'JetBrains Mono','IBM Plex Sans KR',monospace;
   --pad:18px;     /* left and right inside every panel and card */
@@ -33,7 +37,7 @@ h2{margin:0;font-size:15px;font-weight:600}
 .seg-nav{display:flex;gap:4px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
 .seg-nav a{min-height:32px;padding:0 14px;display:flex;align-items:center;gap:6px;border-radius:8px;font-size:13px;text-decoration:none;color:var(--muted)}
 .seg-nav [aria-current]{background:var(--raised);color:var(--text)}
-.seg-nav a:not([aria-current]):hover{background:var(--raised);color:var(--text2)}
+.seg-nav a:not([aria-current]):hover{background-image:var(--hover);color:var(--text2)}
 .nav-dot{width:6px;height:6px;border-radius:50%}
 /* min-width fits the widest usual text (개요's 마지막 갱신 HH:MM:SS, 171px here) so the pill is the
    same size on every page; 갱신 지연 with a day prefix may grow it by a few px */

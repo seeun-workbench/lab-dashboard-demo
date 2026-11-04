@@ -153,10 +153,9 @@ details.cmdset.cmds-box>summary::before{left:14px;top:15px}
 /* '외 N개' / '접기': a text button, so its chevron points the way the list moves (down to show more, up to fold),
    as the overview's '더 보기 / 작업 접기'; the <details> heading rows below use ›/∨ */
 .c-item .more{display:block;position:relative;padding:4px 0 4px 26px;margin-top:2px;background:none;border:0;font:inherit;color:var(--muted);cursor:pointer;text-align:left}
-/* hover: one raised background for every button and fold row, as on the overview */
-.c-item .more:hover{color:var(--text2);background:var(--raised)}
-.sum a:hover,.copy:hover,.m-chip:hover,.m-cancel:hover,.tabs button:not([aria-pressed="true"]):hover,.cmdset>summary:hover{background:var(--raised)}
-.m-on:hover{border-color:var(--sky)}
+/* hover: the shared --hover layer (common.css) for every button and fold row, as on the overview */
+.c-item .more:hover{color:var(--text2);background-image:var(--hover)}
+.sum a:hover,.copy:hover,.m-chip:hover,.m-cancel:hover,.m-on:hover,.tabs button:not([aria-pressed="true"]):hover,.cmdset>summary:hover{background-image:var(--hover)}
 .c-item .more::before{content:'';position:absolute;top:6px;left:11px;width:7px;height:7px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);transition:transform .15s}
 /* open: the word says what a click does ('접기'), so the chevron points up the way the list folds */
 .c-item .more[aria-expanded="true"]::before{top:11px;transform:rotate(-135deg)}

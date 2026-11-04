@@ -93,6 +93,10 @@
 .more{display:flex;flex-wrap:wrap;gap:8px;padding:6px var(--pad) 10px calc(var(--pad) + 116px);border-top:1px solid var(--line3)}
 .more button{min-height:32px;padding:0 12px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:var(--sky);font-family:'IBM Plex Sans KR',sans-serif;font-size:12px;cursor:pointer}
 .more button:hover{background:var(--raised)}
+/* same chevron as the group pill below: down on '더 보기' (the list grows), up on '작업 접기' */
+.more button{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.more button::before{content:'';flex:none;width:6px;height:6px;margin-top:-3px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg)}
+.more button[data-act="less"]::before{margin-top:3px;transform:rotate(225deg)}
 .tr.grp{width:100%;border:0;margin:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .tr.grp.first{border-top:1px solid var(--line2)}
 .tr.grp.next{border-top:1px solid var(--line3)}

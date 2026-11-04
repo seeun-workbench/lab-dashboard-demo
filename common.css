@@ -4,7 +4,24 @@
   --bg:#07080a;--panel:#0e1014;--panel2:#0a0c0f;--line:#1c1f26;--line2:#2a2f38;--line3:#15181d;
   --text:#eceef2;--text2:#c1c6cf;--muted:#8b919c;--dim:#5d636e;
   --amber:#ffb547;--red:#ff6b6b;--sky:#7dd3fc;--blue:#3b8fbf;
-  --amber-bg:rgba(255,181,71,0.08);--amber-line:#6b4a14;--red-line:#7a2a2a;--raised:#1c2129;
+  /* State colours: one colour per meaning on every page.
+       red = 위험, amber = 주의 (and a waiting job), blue = 정상 (drive lights, the disk page's 정상),
+       grey (--muted) = 정보, neutral, a running job. Sky is NOT a health state: it marks what can be
+       clicked or is emphasised (links, buttons, your own jobs, a switch that is on), the live dot
+       of the time badge (amber once stale), and, as a hollow ring only, a hot spare / unused drive.
+     Normal stays quiet: the overview and /admin show nothing for it; only the disk page, which
+     draws a light for every slot, shows 정상 in blue.
+     Two background strengths: -bg for a whole box (notice, stale badge, a hot slot),
+     -pill for a small pill, which needs a little more to show.
+     Five shapes, chosen by place, not by page:
+       solid badge          the overview server cards (a summary must catch the eye)
+       pill (-pill bg)      the state of one item at its head (disk detail, a job's 대기)
+       outlined tag         a trait inside a row (GPU 유휴, RAID set, /admin summary links, root)
+       dot + coloured text  long lists (/admin alerts, existing monitoring)
+       box border + -bg     the box itself is the problem (hot slot, GPU card, notice, stale badge) */
+  --amber-bg:rgba(255,181,71,0.08);--red-bg:rgba(255,107,107,0.09);
+  --amber-pill:rgba(255,181,71,0.12);--red-pill:rgba(255,107,107,0.14);--blue-pill:rgba(59,143,191,0.12);
+  --amber-line:#6b4a14;--red-line:#7a2a2a;--raised:#1c2129;
   --sky-hover:#bae6fd;--sky-line:#2b5f7f;--sky-bg:#1c2a36;
   --marked:#12151b;
   /* background steps, weakest first: --tint (rows that belong together, e.g. an opened job group),

@@ -150,12 +150,21 @@
     return k === 'optl' ? 'ok' : (k === 'ofln' ? 'danger' : 'caution');
   }
 
-  // Worst level over every drive and RAID set in a disks.json server list.
+  // Disk data comes every 10 min; older than this it is not the server's current state.
+  var STALE_S = 30 * 60;
+  // A server marked 점검 중 that has stopped sending: what it sent last is from before the
+  // power-off, not now, so it is not judged as current (monitoring tools do the same with a
+  // planned downtime). A marked server that still sends is judged as usual.
+  function held(x) {
+    return !!x.maintenance && (!x.disks || Date.now() / 1000 - x.disks.epoch > STALE_S);
+  }
+
+  // Worst level over every drive and RAID set in a disks.json server list (held servers left out).
   function worst(servers) {
     var lvl = 'ok';
     (servers || []).forEach(function (x) {
       var d = x.disks;
-      if (!d) return;
+      if (!d || held(x)) return;
       (d.drives || []).concat(d.direct || []).forEach(function (dr) {
         var j = judge(dr).level;
         if (j === 'danger' || (j === 'caution' && lvl === 'ok')) lvl = j;
@@ -171,7 +180,7 @@
   }
 
   root.DiskRules = {
-    judge: judge, levels: levels, worst: worst, vdOk: vdOk, vdLevel: vdLevel, enclLevel: enclLevel, enclTemps: enclTemps,
+    judge: judge, levels: levels, worst: worst, held: held, STALE_S: STALE_S, vdOk: vdOk, vdLevel: vdLevel, enclLevel: enclLevel, enclTemps: enclTemps,
     missing: missing, manyBad: manyBad, writePolicy: writePolicy, cacheRisks: cacheRisks, cacheWarn: cacheWarn, temp: temp, isSsd: isSsd,
     LIMITS: LIMITS, warmLimit: warmLimit, hotLimit: hotLimit,
     stateLabel: function (d) { var k = stateKey(d); return STATE_LABEL[k] || d.state || '—'; },

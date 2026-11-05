@@ -32,6 +32,11 @@
 .ok-row[aria-expanded="true"]::after{transform:rotate(45deg)}
 .ok-list .card{background:none;border:0;border-top:1px solid var(--line);border-radius:0}
 .ok-list .card-head{display:none}
+/* 점검 중 servers that stopped sending: grey dot, last data greyed (not the current state) */
+.ok-row.held .dot{background:var(--dim)}
+.ok-row .maint.long{color:var(--amber)}
+.card.held>:not(.held-note){opacity:.5}
+.held-note{font-size:12px;color:var(--text2)}
 
 .cards{display:flex;flex-direction:column;gap:12px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px var(--pad);display:flex;flex-direction:column;gap:14px;min-width:0}
@@ -214,7 +219,6 @@
   // minute is plenty.
   var DATA_URL = 'data/disks.json';
   var POLL_MS = 60000;
-  var STALE_S = 30 * 60;       // header turns amber when a server's data is older than this
 
   // storcli reports only an enclosure's slot count, not its front-panel shape.
   // Columns are estimated from the enclosure model (ProdID); slots fill left to
@@ -245,6 +249,8 @@
   }
 
   var R = window.DiskRules;
+  var STALE_S = R.STALE_S;      // header turns amber when a server's data is older than this (30 min)
+  var MAINT_LONG_S = 24 * 3600; // an open-ended 점검 중 silent this long is flagged (index.html: same)
   // the common.css colours (inline styles take var())
   var AMBER = 'var(--amber)', RED = 'var(--red)', BLUE = 'var(--blue)', MUTED = 'var(--muted)';
   var SPARE = { ghs: 1, dhs: 1, ugood: 1, ugunsp: 1 };
@@ -276,7 +282,8 @@
   // Per-host view model: every drive with its verdict, enclosures with drives.
   function model(x) {
     var d = x.disks;
-    if (!d) return { host: x.host, missing: true, level: 'ok', drives: [], items: [], maint: x.maintenance };
+    // held = marked 점검 중 and no longer sending: its last data is shown apart, greyed, and not counted
+    if (!d) return { host: x.host, missing: true, level: 'ok', drives: [], items: [], maint: x.maintenance, held: R.held(x) };
     var items = [];
     (d.drives || []).forEach(function (dr) { items.push({ host: x.host, key: x.host + '|' + dr.id, where: dr.id, d: dr, j: R.judge(dr) }); });
     (d.direct || []).forEach(function (dr) { items.push({ host: x.host, key: x.host + '|dev:' + dr.dev, where: dr.dev, d: dr, j: R.judge(dr), direct: true }); });
@@ -288,7 +295,7 @@
     var ms = R.missing(d), manyBad = R.manyBad(d), cacheRisks = R.cacheRisks(d), cacheWarn = R.cacheWarn(d);
     if (cacheWarn.length) level = worse(level, 'caution');
     if (ms.vds.length || ms.enclosures.length || manyBad.length) level = 'danger';
-    return { host: x.host, d: d, items: items, level: level, hotEncl: hotEncl, maint: x.maintenance, manyBad: manyBad, cacheRisks: cacheRisks, cacheWarn: cacheWarn,
+    return { host: x.host, d: d, items: items, level: level, hotEncl: hotEncl, maint: x.maintenance, held: R.held(x), manyBad: manyBad, cacheRisks: cacheRisks, cacheWarn: cacheWarn,
              danger: items.filter(function (i) { return i.j.level === 'danger'; }).length,
              caution: items.filter(function (i) { return i.j.level === 'caution'; }).length,
              remove: items.filter(function (i) { return i.j.level === 'remove'; }).length };
@@ -304,8 +311,11 @@
   }
 
   function renderSummary(models) {
+    // held servers (점검 중, silent) are left out of every count; the server bar shows them grey
+    var cur = models.filter(function (m) { return !m.held; });
+    var heldN = models.length - cur.length;
     var all = [];
-    models.forEach(function (m) { all = all.concat(m.items); });
+    cur.forEach(function (m) { all = all.concat(m.items); });
     var flagged = all.filter(function (i) { return i.j.level === 'danger' || i.j.level === 'caution'; })
       .sort(function (a, b) { return (b.j.level === 'danger') - (a.j.level === 'danger'); });
     var dn = flagged.filter(function (i) { return i.j.level === 'danger'; }).length;
@@ -326,7 +336,7 @@
       '<div class="ends"><span>20°C</span><span>80°C</span></div></div>';
 
     var vds = [];
-    models.forEach(function (m) {
+    cur.forEach(function (m) {
       ((m.d && m.d.vds) || []).forEach(function (v) { vds.push({ host: m.host, v: v, lvl: R.vdLevel(v) }); });
       R.missing(m.d).vds.forEach(function (v) { vds.push({ host: m.host, v: v, lvl: 'danger', gone: true }); });
     });
@@ -338,14 +348,14 @@
     }).join('') + '</div>';
 
     var srvSegs = '<div class="segs" aria-hidden="true">' + models.map(function (m) {
-      return '<i style="background:' + (m.missing ? 'transparent;border:1px dashed ' + MUTED : (color(m.level) || BLUE)) + '"></i>';
+      return '<i style="background:' + (m.held ? 'var(--line2)' : (m.missing ? 'transparent;border:1px dashed ' + MUTED : (color(m.level) || BLUE))) + '"></i>';
     }).join('') + '</div>';
 
     $('summary').innerHTML =
       tile('확인 필요 디스크', flagged.length, '개', '위험 ' + dn + ', 주의 ' + cn + (rn ? ', 제거 대상 ' + rn : ''), dn ? RED : (cn ? AMBER : null), flagged.length ? list : '') +
       tile('HDD 최고 온도', hotT == null ? '—' : hotT, '°C', hot ? esc(hot.host + ' ' + hot.where) : '—', color(hotLvl), bar, true) +
       tile('RAID 볼륨', vds.length - badVd.length, '/' + vds.length + ' 정상', esc(vdNote), badVd.length ? color(badVd.reduce(function (a, x) { return worse(a, x.lvl); }, 'ok')) : null, vds.length ? vdSegs : '') +
-      tile('전체 디스크', all.length, '개', '서버 ' + models.length + '대', null, srvSegs);
+      tile('전체 디스크', all.length, '개', '서버 ' + cur.length + '대' + (heldN ? ', 점검 중 ' + heldN + '대 제외' : ''), null, srvSegs);
   }
 
   // ---------- cards ----------
@@ -554,12 +564,30 @@
     return html + '</div>';
   }
 
+  // '점검 중 · 11/4 15:20부터'; an open-ended mark silent for a day turns amber, as on the overview
+  function maintLabel(m) {
+    var mt = m.maint, quiet = mt.silent_at || mt.set_at;
+    var long = !mt.until && quiet && Date.now() / 1000 - quiet >= MAINT_LONG_S;
+    return '<span class="maint' + (long ? ' long' : '') + '">점검 중' + (long ? ' · 24시간 넘음' : '') + ' · ' + esc(maintUntil(mt)) + '</span>';
+  }
+  // A held server's last data, greyed, with what it showed then.
+  function heldCardHtml(m) {
+    var then = [];
+    if (m.danger) then.push('위험 ' + m.danger + '개');
+    if (m.caution) then.push('주의 ' + m.caution + '개');
+    var t = dayPrefix(m.d.epoch) + hhmm(m.d.epoch);
+    var note = '<span class="held-note">' + esc(t) + '에 마지막으로 받은 자료입니다. 지금 상태가 아니며, ' +
+      (then.length ? '그때 기준 ' + then.join(', ') + '였습니다.' : '그때는 확인할 디스크가 없었습니다.') + '</span>';
+    return cardHtml(m).replace('<div class="card">', '<div class="card held">' + note);
+  }
+
   function renderCards(models) {
     // Servers to look at first; the rest are one row each in a panel at the bottom. A server
     // without disk data is not "normal", so it stays with the others.
     var isOk = function (m) { return m.level === 'ok' && !m.missing; };
-    var shown = models.filter(function (m) { return !isOk(m); });
-    var ok = models.filter(isOk);
+    var shown = models.filter(function (m) { return !m.held && !isOk(m); });
+    var ok = models.filter(function (m) { return !m.held && isOk(m); });
+    var held = models.filter(function (m) { return m.held; });
     $('h-cards').textContent = '확인할 서버 ' + shown.length + '대';
     var html = shown.length ? shown.map(cardHtml).join('') : '<div class="empty-msg">확인이 필요한 서버가 없습니다.</div>';
     if (ok.length) {
@@ -569,6 +597,16 @@
           '<span class="dot" aria-hidden="true"></span><span class="name">' + esc(m.host) + '</span>' +
           // a 점검 중 server here shows its last data: say so on the row, not only in the folded card
           '<span class="info">' + esc(diskCounts(m)) + (m.maint ? ' · <span class="maint">점검 중 · ' + esc(maintUntil(m.maint)) + '</span>' : '') + '</span></button>' + (open ? cardHtml(m) : '');
+      }).join('') + '</div></div>';
+    }
+    if (held.length) {
+      html += '<div class="sec"><div class="sec-head"><h2>점검 중 서버 ' + held.length + '대</h2>' +
+        '<span class="sec-note">꺼지기 전 마지막 자료라 판정과 집계에서 뺍니다.</span></div><div class="ok-list">' + held.map(function (m) {
+        var open = !!okOpen[m.host];
+        return '<button type="button" class="ok-row held" data-ok-host="' + esc(m.host) + '" aria-expanded="' + open + '">' +
+          '<span class="dot" aria-hidden="true"></span><span class="name">' + esc(m.host) + '</span>' +
+          '<span class="info">' + maintLabel(m) + ' · ' + (m.missing ? '디스크 정보 없음' : '마지막 수집 ' + esc(dayPrefix(m.d.epoch) + hhmm(m.d.epoch))) +
+          '</span></button>' + (open ? (m.missing ? cardHtml(m) : heldCardHtml(m)) : '');
       }).join('') + '</div></div>';
     }
     $('cards').innerHTML = html;
@@ -600,7 +638,7 @@
     el.querySelector('.lbl').textContent = !data ? (fetchFailed ? '데이터를 불러오지 못했습니다' : '불러오는 중') : (stale ? '갱신 지연' : '마지막 갱신');
     $('badge-time').textContent = newest ? dayPrefix(newest) + hhmm(newest) : '';
 
-    var lvl = models.reduce(function (a, m) { return worse(a, m.level); }, 'ok');
+    var lvl = models.reduce(function (a, m) { return m.held ? a : worse(a, m.level); }, 'ok');
     var dot = $('nav-dot');
     dot.hidden = lvl === 'ok';
     dot.style.background = color(lvl) || 'transparent';

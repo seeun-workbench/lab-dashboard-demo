@@ -31,7 +31,9 @@
 .m-card.on{border-color:var(--dim);background:var(--marked)}
 .m-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .m-top b{font-family:var(--mono);font-size:14px;font-weight:600}
-.m-state{font-size:12px;color:var(--muted)}
+.m-state{margin-top:-4px;font-size:12px;color:var(--muted);word-break:keep-all}
+.m-state span{white-space:nowrap}
+.m-state span.note{white-space:normal;overflow-wrap:anywhere}
 .m-card.on .m-state{color:var(--text2)}
 .switch{position:relative;width:46px;height:26px;border-radius:13px;border:1px solid var(--line2);background:var(--line3);cursor:pointer;flex:0 0 auto}
 .switch::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--muted);transition:left .15s}
@@ -502,14 +504,19 @@ details:not(.rt-dir)[open]>summary::before{transform:rotate(45deg)}
     var keep = active && active.dataset && active.dataset.host ? { host: active.dataset.host, f: active.dataset.f } : null;
     $('maint').innerHTML = (maintErr ? '<div class="m-err" style="grid-column:1/-1">점검 중 표시 API에 연결하지 못했습니다. 아래는 현재 상태이며, 연결될 때까지 바꿀 수 없습니다.</div>' : '') + hosts.map(function (h) {
       var m = on[h], dr = drafts[h] || {};
-      var state = m ? '점검 중 · ' + (m.until ? mdhm(m.until) + '까지' : mdhm(m.set_at) + '부터') + (m.note ? ' · ' + m.note : '') +
-                      (m.silent_at ? ' · 무응답 ' + age(now() - m.silent_at) : '')
-                    : '표시 안 함';
+      // each part keeps together ('무응답 1일' never splits); a long line breaks only between parts
+      var parts = m ? ['점검 중', m.until ? mdhm(m.until) + '까지' : mdhm(m.set_at) + '부터'].concat(m.note ? [m.note] : [])
+                        .concat(m.silent_at ? ['무응답 ' + age(now() - m.silent_at)] : [])
+                    : ['표시 안 함'];
+      // the free-text reason (up to 80 characters) may wrap inside itself, so it never overflows the card
+      var state = parts.map(function (t) { return '<span' + (m && t === m.note ? ' class="note"' : '') + '>' + esc(t) + '</span>'; }).join(' · ');
       var until = m ? (m.until ? toLocalInput(m.until) : '') : (dr.until || '');
       var note = m ? (m.note || '') : (dr.note || '');
       var open = !m && dr.open;
-      return '<div class="m-card' + (m ? ' on' : '') + '"><div class="m-top"><div><b>' + esc(h) + '</b><div class="m-state">' + esc(state) + '</div></div>' +
+      return '<div class="m-card' + (m ? ' on' : '') + '"><div class="m-top"><b>' + esc(h) + '</b>' +
         '<button type="button" class="switch" role="switch" aria-checked="' + !!m + '" aria-expanded="' + (m ? 'false' : !!open) + '" aria-label="' + esc(h) + ' 점검 중 표시" data-host="' + esc(h) + '"' + (busy[h] || maintErr ? ' disabled' : '') + '></button></div>' +
+        // the state under the name and switch, the card's full width, so it fits one line on desktop
+        '<div class="m-state">' + state + '</div>' +
         (open ? '<div class="m-fields"><label>종료 예정 시각 (선택)<input type="datetime-local" data-host="' + esc(h) + '" data-f="until" value="' + esc(until) + '"></label>' +
           '<label class="m-note">사유 (선택)<input type="text" maxlength="80" placeholder="비워 두면 \'사유 없음\'으로 표시됩니다" data-host="' + esc(h) + '" data-f="note" value="' + esc(note) + '"></label>' +
           '<div class="m-chips" role="group" aria-label="자주 쓰는 사유">' + REASONS.map(function (r) {

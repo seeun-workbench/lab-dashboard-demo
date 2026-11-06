@@ -76,6 +76,14 @@ td.cmd{font-family:var(--mono);font-size:12px;color:var(--text2);overflow-wrap:a
    free-text command wraps); the table scrolls sideways if the row gets wider than the panel */
 #containers td:nth-child(2),#containers td:nth-child(3),#containers td:nth-child(4){white-space:nowrap}
 .ok{color:var(--muted)}.warn{color:var(--amber)}.bad{color:var(--red)}
+/* a server marked 점검 중 that stopped sending: its last data stays, grey, and is not judged (disk.html: same) */
+.held-at{display:block;margin-top:2px;font-family:var(--sans);font-size:11px;font-weight:400;color:var(--muted);white-space:normal;word-break:keep-all}
+tr.held td:not(.srv){opacity:.5}
+tr.held .bad,tr.held .warn,.c-card.held .lv,.c-card.held .warn{color:var(--muted)}
+.c-card.held>:not(.c-top):not(.held-at){opacity:.5}
+.c-card .held-at{margin-top:-4px;font-size:12px}
+/* the monitoring's own check name (disk_temp), small beside the plain one */
+.cid{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--muted)}
 
 /* 프로세스 종류별: the four kinds at one width */
 #kinds table{table-layout:fixed}
@@ -171,8 +179,8 @@ summary::-webkit-details-marker{display:none}
 details:not(.rt-dir)>summary::before{content:'';position:absolute;top:8px;left:1px;width:7px;height:7px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform .15s}
 details:not(.rt-dir)[open]>summary::before{transform:rotate(45deg)}
 .c-ok{display:flex;flex-wrap:wrap;gap:6px;padding-top:6px}
-.c-ok span{font-family:var(--mono);padding:2px 8px;border:1px solid var(--line2);border-radius:6px}
-.c-ok span.old{border-color:var(--amber-line);color:var(--amber)}
+.c-ok>span{padding:2px 8px;border:1px solid var(--line2);border-radius:6px}
+.c-ok>span.old{border-color:var(--amber-line);color:var(--amber)}
 
 /* trends */
 .tabs{display:flex;flex-wrap:wrap;gap:4px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
@@ -444,7 +452,7 @@ details:not(.rt-dir)[open]>summary::before{transform:rotate(45deg)}
     Object.keys(crit).sort().forEach(function (k) {
       var l = crit[k].sort(byObject);
       var shown = l.slice(0, 3).map(function (it) { return it.object + ' ' + it.msg.replace(/\s*\(.*\)$/, ''); }).join(', ');
-      add('danger', '모니터링 ' + k + (l.length > 1 ? ' ' + l.length + '개' : '') + ': ' + shown + (l.length > 3 ? ' 외 ' + (l.length - 3) + '개' : ''), SEC.cron);
+      add('danger', '모니터링 ' + checkName(k) + (CHECK_NAME[k] ? ' (' + k + ')' : '') + (l.length > 1 ? ' ' + l.length + '개' : '') + ': ' + shown + (l.length > 3 ? ' 외 ' + (l.length - 3) + '개' : ''), SEC.cron);
     });
     return out;
   }
@@ -750,7 +758,7 @@ details:not(.rt-dir)[open]>summary::before{transform:rotate(45deg)}
 
   function renderChecks() {
     var rows = servers().map(function (x) {
-      var a = x.admin;
+      var a = x.admin || x.last_admin, held = !x.admin;
       if (!a) return '<tr><td class="srv">' + esc(x.host) + '</td><td colspan="8" class="ok">' + (x.maintenance ? '점검 중' : '정보 없음') + '</td></tr>';
       var sw = a.swap || {}, sv = a.services || {}, g = a.gpu || {};
       var svc = function (s) { return !s ? '<span class="ok">—</span>' : (s.running ? (s.unit === 'active' ? '<span class="ok">실행 중</span>' : '<span class="ok" title="systemd 유닛은 ' + esc(s.unit) + ', 프로세스는 실행 중">실행 중 (수동 시작)</span>') : '<span class="bad">중지</span>'); };
@@ -760,7 +768,7 @@ details:not(.rt-dir)[open]>summary::before{transform:rotate(45deg)}
           ((g.ecc || []).every(function (e) { return e.uncorrected == null; }) ? ' · <span class="ok">ECC 미지원</span>' : ''));
       var mnt = (a.mounts || []).length ? '<span class="bad">' + a.mounts.map(function (m) { return esc(m.mount + (m.missing ? ' 마운트 안 됨' : m.hung ? ' 응답 지연' : ' 읽기 전용')); }).join('<br>') + '</span>' : '<span class="ok">정상</span>';
       var d = a.dstate || {};
-      return '<tr><td class="srv">' + esc(x.host) + '</td>' +
+      return '<tr' + (held ? ' class="held"' : '') + '><td class="srv">' + esc(x.host) + (held ? heldAt(a) : '') + '</td>' +
         '<td data-l="스왑" class="num nw ' + (sw.pct >= 95 ? 'bad' : sw.pct >= 80 ? 'warn' : '') + '">' + (sw.total_gb ? sw.pct + '%' : '<span class="ok">없음</span>') + '</td>' +
         '<td data-l="OOM 24시간 / 부팅 후" class="num nw ' + (a.oom.last_24h ? 'bad' : '') + '">' + a.oom.last_24h + ' <span class="ok">/ ' + (a.oom.total == null ? '—' : a.oom.total) + '</span></td>' +
         '<td data-l="D 상태" class="num nw ' + (d.flag ? 'warn' : '') + '">' + (d.count || 0) + '</td>' +
@@ -957,12 +965,22 @@ details:not(.rt-dir)[open]>summary::before{transform:rotate(45deg)}
     });
     return out;
   }
+  // plain names for the monitoring's checks, the same list as its team mail (aggregate.sh plain());
+  // the check's own name stays beside it, small, to match the mail and status.txt
+  var CHECK_NAME = { raid: '디스크 어레이', disk_temp: '디스크 온도', vendor_temp: '디스크 과열 (업체 연락 기준)', smart: '시스템 디스크 상태',
+    xfs: '파일 시스템 오류', space: '저장 공간', inode: '파일 개수 한도', drive_errors: '디스크 노후', link_errors: '디스크 연결 오류',
+    cache: '컨트롤러 캐시 배터리', memory: '메모리', ipmi: '하드웨어 센서', psu: '전원 공급 장치', gpu: 'GPU', sel: '하드웨어 이벤트 기록',
+    cert: '인증서 만료', log_report: '시스템 로그', collect: '모니터링 보고 없음' };
+  function checkName(k) { return CHECK_NAME[k] || k; }
+  function checkHtml(k, n) {
+    return '<b>' + esc(checkName(k)) + (n ? ' ' + n : '') + '</b>' + (CHECK_NAME[k] ? ' <span class="cid">' + esc(k) + '</span>' : '');
+  }
   var CRON_OBJ_SHOWN = 3;  // objects shown per check before '외 N개'
   var cronColsNow = 0;     // columns of the last render; a resize past a column boundary re-renders
   var cronOpen = {};       // host|level|check lists the user unfolded: they stay open across refreshes
   function renderCron() {
     var cards = servers().map(function (x) {
-      var c = x.admin && x.admin.cron;
+      var src = x.admin || x.last_admin, c = src && src.cron, held = !x.admin && !!c;
       if (!c || !c.ok) return '<div class="c-card"><div class="c-top"><b>' + esc(x.host) + '</b><span class="' + (c ? 'warn' : 'ok') + '">' + (c ? 'status.txt 읽기 실패' : !x.admin && x.maintenance ? '점검 중' : '정보 없음') + '</span></div></div>';
       var items = c.items || [];
       var bad = items.filter(function (i) { return i.level !== 'OK'; });
@@ -974,15 +992,16 @@ details:not(.rt-dir)[open]>summary::before{transform:rotate(45deg)}
       items.forEach(function (i) { if (i.level === 'OK') okBy[i.check] = (okBy[i.check] || 0) + 1; });
       var checks = Object.keys(c.parts || {}).sort();
       var oldAt = now() - 86400 - 3600;
-      var stale = (now() - c.mtime) > CRON_STALE_S;
-      return '<div class="c-card"><div class="c-top"><b>' + esc(x.host) + '</b><span class="' + (stale ? 'warn' : 'ok') + ' mono t12">' + esc(c.time || '') + (stale ? ' (오래됨)' : '') + '</span></div>' +
+      var stale = !held && (now() - c.mtime) > CRON_STALE_S;
+      return '<div class="c-card' + (held ? ' held' : '') + '"><div class="c-top"><b>' + esc(x.host) + '</b><span class="' + (stale ? 'warn' : 'ok') + ' mono t12">' + (held ? '점검 중 · ' : '') + esc(c.time || '') + (stale ? ' (오래됨)' : '') + '</span></div>' +
+        (held ? heldAt(src) : '') +
         '<div class="c-count">' + (count('CRITICAL') ? lvHtml('danger', '위험 ' + count('CRITICAL')) : '') + (count('WARNING') ? lvHtml('caution', '주의 ' + count('WARNING')) : '') +
         (count('UNKNOWN') ? lvHtml('info', '알 수 없음 ' + count('UNKNOWN')) : '') + '<span class="ok">정상 ' + count('OK') + '</span></div>' +
         (bad.length ? '<div class="c-items">' + groups(bad).map(function (g) {
           var lv = lvHtml(CRON_LV[g.level] || 'info', CRON_TEXT[g.level] || g.level);
           if (g.items.length === 1) {
             var i = g.items[0];
-            return '<div class="c-item">' + lv + '<span class="what"><b>' + esc(i.check) + '</b> ' + esc(i.object) + ' <span>' + esc(i.msg) +
+            return '<div class="c-item">' + lv + '<span class="what">' + checkHtml(i.check) + ' ' + esc(i.object) + ' <span>' + esc(i.msg) +
               (i.since ? ' · ' + age(now() - i.since) + ' 전부터' : '') + '</span></span></div>';
           }
           // many of one check (13 hot drives): one line each; past CRON_OBJ_SHOWN they fold behind '외 N개'
@@ -990,17 +1009,17 @@ details:not(.rt-dir)[open]>summary::before{transform:rotate(45deg)}
           var rest = g.items.length - CRON_OBJ_SHOWN;
           if (rest < 2) rest = 0;  // hiding a single line behind a button is not worth a click
           var open = rest > 0 && !!cronOpen[key];
-          return '<div class="c-item">' + lv + '<span class="what"><b>' + esc(g.check) + ' ' + g.items.length + '개</b>' +
+          return '<div class="c-item">' + lv + '<span class="what">' + checkHtml(g.check, g.items.length + '개') +
             g.items.map(function (i, n) { return '<span class="obj"' + (rest > 0 && !open && n >= CRON_OBJ_SHOWN ? ' hidden' : '') + '>' + esc(i.object) + ' <span>' + esc(i.msg) + '</span></span>'; }).join('') +
             (rest > 0 ? '<button type="button" class="more" data-k="' + esc(key) + '" data-rest="' + rest + '" aria-expanded="' + open + '">' + (open ? '접기' : '외 ' + rest + '개') + '</button>' : '') + '</span></div>';
         }).join('') + '</div>' : '') +
         '<details><summary>점검 항목 ' + checks.length + '개 (정상 항목 ' + count('OK') + '개)</summary><div class="c-ok">' +
           checks.map(function (k) {
             var old = c.parts[k] && c.parts[k] < oldAt;
-            return '<span class="' + (old ? 'old' : '') + '" title="마지막 확인 ' + (c.parts[k] ? mdhm(c.parts[k]) : '—') + '">' + esc(k) + (okBy[k] ? ' ' + okBy[k] : '') + (old ? ' · ' + mdhm(c.parts[k]) : '') + '</span>';
+            return '<span class="' + (old ? 'old' : '') + '" title="마지막 확인 ' + (c.parts[k] ? mdhm(c.parts[k]) : '—') + '">' + esc(checkName(k)) + (okBy[k] ? ' ' + okBy[k] : '') + (CHECK_NAME[k] ? ' <span class="cid">' + esc(k) + '</span>' : '') + (old ? ' · ' + mdhm(c.parts[k]) : '') + '</span>';
           }).join('') +
           ((c.info || []).length ? '</div><div class="c-items" style="padding-top:8px">' + c.info.map(function (i) {
-            return '<div class="c-item"><span class="ok">참고</span><span class="what">' + esc(i.check) + ' ' + esc(i.object) + ' <span>' + esc(i.msg) + '</span></span></div>';
+            return '<div class="c-item"><span class="ok">참고</span><span class="what">' + checkHtml(i.check).replace(/<\/?b>/g, '') + ' ' + esc(i.object) + ' <span>' + esc(i.msg) + '</span></span></div>';
           }).join('') : '') +
         '</div></details></div>';
     });
@@ -1168,11 +1187,21 @@ details:not(.rt-dir)[open]>summary::before{transform:rotate(45deg)}
       return r.json();
     });
   }
+  // A server marked 점검 중 whose admin data stopped coming (switched off) is not judged on what it sent
+  // before: its admin moves to last_admin, so every section shows it as 점검 중 like a server with no data,
+  // and only the checks table and the monitoring cards still show that last data, grey, with its time.
+  function holdStale() {
+    servers().forEach(function (x) {
+      if (x.maintenance && x.admin && now() - x.admin.epoch > STALE_S) { x.last_admin = x.admin; x.admin = null; }
+    });
+  }
+  function heldAt(a) { return '<span class="held-at">꺼지기 전 마지막 자료 (' + mdhm(a.epoch) + ')</span>'; }
   function load() {
     var api = get(API).then(function (r) { maintErr = false; return r; }, function () { maintErr = true; return maint; });
     get('../data/all.json').then(function (j) { live = j; renderJobs(); }).catch(function () { /* keep the last list */ });
     Promise.all([get(ADMIN_URL), api]).then(function (res) {
       adm = res[0]; maint = res[1]; fetchFailed = false;
+      holdStale();
       $('notice').hidden = true;
       renderAll();
     }).catch(function (e) {

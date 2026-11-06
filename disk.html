@@ -546,8 +546,11 @@
         }).join(' · ') + '</span></div>';
       }
     }
+    // the picked drive's details go right under the grid it sits in, not at the card's end
+    var picked = m.items.filter(function (i) { return i.key === sel; })[0], placed = false;
     encls.forEach(function (e) {
       html += enclosureHtml(m, e, drives.filter(function (i) { return i.d.encl === e.id; }));
+      if (picked && !picked.direct && picked.d.encl === e.id) { html += factsHtml(m, picked); placed = true; }
     });
     var direct = m.items.filter(function (i) { return i.direct; });
     if (direct.length) {
@@ -558,9 +561,9 @@
           '<b>' + esc(i.d.dev) + '</b>' + (bayTempText(i) ? '<span class="t">' + bayTempText(i) + '</span>' : '') +
           (bayNote(i) ? '<span class="note">' + esc(bayNote(i)) + '</span>' : '') + '</button>';
       }).join('') + '</div>';
+      if (picked && picked.direct) { html += factsHtml(m, picked); placed = true; }
     }
-    var picked = m.items.filter(function (i) { return i.key === sel; })[0];
-    if (picked) html += factsHtml(m, picked);
+    if (picked && !placed) html += factsHtml(m, picked);
     return html + '</div>';
   }
 
@@ -756,6 +759,9 @@
     var k = b.getAttribute('data-key');
     sel = sel === k ? '' : k;
     render();
+    // opened below the visible part of the page: scroll just enough to show it (no jump when it is in view)
+    var det = sel && document.querySelector('#cards .detail');
+    if (det) det.scrollIntoView({ block: 'nearest' });
   });
   renderGloss();
   tick();
